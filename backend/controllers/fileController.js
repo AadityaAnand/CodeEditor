@@ -1,13 +1,15 @@
+const mongoose = require('mongoose');
 const { File, Project } = require('../models');
+
 exports.createFile = async (req, res) => {
   try {
     const { name, type, parentFolderId, projectId, language, content } = req.body;
-
+    
     const newFile = new File({
       name,
       type,
       parentFolderId: parentFolderId || null,
-      projectId,
+      projectId: new mongoose.Types.ObjectId(projectId),
       language: type === 'file' ? language : null,
       content: type === 'file' ? content : null,
     });
@@ -18,37 +20,39 @@ exports.createFile = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 exports.getProjectTree = async (req, res) => {
   try {
     const { projectId } = req.params;
-
-    const files = await File.find({ projectId }).sort({ name: 1 });
-
+    const objectId = new mongoose.Types.ObjectId(projectId);
+    const files = await File.find({ projectId: objectId }).sort({ name: 1 });
     res.json(files);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
+
 exports.getFolderContents = async (req, res) => {
   try {
     const { projectId, folderId } = req.params;
-    const parentId = folderId === 'root' ? null : folderId;
+    const objectId = new mongoose.Types.ObjectId(projectId);
+    const parentId = folderId === 'root' ? null : new mongoose.Types.ObjectId(folderId);
 
     const files = await File.find({
-      projectId,
+      projectId: objectId,
       parentFolderId: parentId,
-    }).sort({ type: -1, name: 1 }); 
+    }).sort({ type: -1, name: 1 });
 
     res.json(files);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
+
 exports.getFile = async (req, res) => {
   try {
     const { fileId } = req.params;
-
-    const file = await File.findById(fileId);
+    const file = await File.findById(new mongoose.Types.ObjectId(fileId));
 
     if (!file) {
       return res.status(404).json({ error: 'File not found' });
@@ -59,16 +63,17 @@ exports.getFile = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 exports.updateFile = async (req, res) => {
   try {
     const { fileId } = req.params;
     const { name, parentFolderId, content, language } = req.body;
 
     const file = await File.findByIdAndUpdate(
-      fileId,
+      new mongoose.Types.ObjectId(fileId),
       {
         name: name !== undefined ? name : undefined,
-        parentFolderId: parentFolderId !== undefined ? parentFolderId : undefined,
+        parentFolderId: parentFolderId !== undefined ? new mongoose.Types.ObjectId(parentFolderId) : undefined,
         content: content !== undefined ? content : undefined,
         language: language !== undefined ? language : undefined,
       },
@@ -84,20 +89,21 @@ exports.updateFile = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 exports.deleteFile = async (req, res) => {
   try {
     const { fileId } = req.params;
-
-    const file = await File.findById(fileId);
+    const file = await File.findById(new mongoose.Types.ObjectId(fileId));
 
     if (!file) {
       return res.status(404).json({ error: 'File not found' });
     }
+
     if (file.type === 'folder') {
-      await File.deleteMany({ parentFolderId: fileId });
+      await File.deleteMany({ parentFolderId: new mongoose.Types.ObjectId(fileId) });
     }
 
-    await File.findByIdAndDelete(fileId);
+    await File.findByIdAndDelete(new mongoose.Types.ObjectId(fileId));
 
     res.json({ message: 'File deleted successfully' });
   } catch (error) {

@@ -9,7 +9,7 @@ const app = express();
 app.use(cors({
   origin: 'http://localhost:3000',
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type'],
 }));
 app.use(express.json());
@@ -28,7 +28,6 @@ app.get('/api/test', (req, res) => {
   res.json({ message: 'Backend is running!' });
 });
 
-// Debug endpoint
 app.get('/api/debug/files', async (req, res) => {
   try {
     const files = await File.find({}).limit(10);
