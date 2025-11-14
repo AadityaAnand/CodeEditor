@@ -22,3 +22,4 @@ package-lock.json
 pnpm-lock.yaml
 # Misc
 .idea/
+frontend/.git_backup

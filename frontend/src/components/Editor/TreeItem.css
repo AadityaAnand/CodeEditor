@@ -1,0 +1,81 @@
+.tree-item {
+  margin-left: 10px;
+  user-select: none;
+  position: relative;
+}
+
+.tree-item-label {
+  display: flex;
+  align-items: center;
+  padding: 5px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.tree-item-label:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.toggle-icon {
+  width: 20px;
+  display: inline-block;
+  margin-right: 5px;
+  color: #888;
+  font-size: 12px;
+}
+
+.file-icon,
+.folder-icon {
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+.item-name {
+  color: #e0e0e0;
+  font-size: 14px;
+}
+
+.item-name.file-name:hover {
+  color: #fff;
+}
+
+.tree-children {
+  margin-left: 10px;
+}
+
+.context-menu {
+  position: absolute;
+  background: #252526;
+  border: 1px solid #3e3e42;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  min-width: 120px;
+  top: 25px;
+  left: 0;
+}
+
+.context-menu button {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  color: #cccccc;
+  text-align: left;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.context-menu button:hover {
+  background: #3e3e42;
+}
+
+.context-menu button:first-child {
+  border-radius: 4px 4px 0 0;
+}
+
+.context-menu button:last-child {
+  border-radius: 0 0 4px 4px;
+}

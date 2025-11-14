@@ -1,0 +1,21 @@
+.file-tree {
+  width: 250px;
+  background-color: #252526;
+  border-right: 1px solid #3e3e42;
+  padding: 15px;
+  max-height: 90vh;
+  overflow-y: auto;
+  color: #cccccc;
+}
+
+.file-tree h3 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  text-transform: uppercase;
+  color: #999;
+}
+
+.file-tree p {
+  font-size: 12px;
+  margin: 10px 0;
+}
