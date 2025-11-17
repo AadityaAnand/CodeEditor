@@ -6,12 +6,17 @@ const { User, Project, File } = require('./models');
 
 const app = express();
 
-app.use(cors({
-  origin: 'http://localhost:3000',
+const corsOptions = {
+  origin: process.env.CLIENT_ORIGIN || 'http://localhost:3000',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type'],
-}));
+  // allow common headers used by browsers and fetch requests
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
+};
+
+// enable CORS using the configured options and make sure preflight requests are handled
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
 
 mongoose.connect(process.env.MONGODB_URI, {
