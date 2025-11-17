@@ -3,13 +3,28 @@ const { File, Project } = require('../models');
 
 exports.createFile = async (req, res) => {
   try {
-    const { name, type, parentFolderId, projectId, language, content } = req.body;
-    
+    // Allow projectId to be passed either in the URL params or the request body
+    const { name, type, parentFolderId, projectId: bodyProjectId, language, content } = req.body;
+    const projectIdFromParams = req.params && req.params.projectId;
+    const projectId = bodyProjectId || projectIdFromParams;
+
+    if (!projectId) {
+      return res.status(400).json({ error: 'projectId is required in URL params or request body' });
+    }
+
+    // Validate projectId as ObjectId
+    let projectObjectId;
+    try {
+      projectObjectId = new mongoose.Types.ObjectId(projectId);
+    } catch (err) {
+      return res.status(400).json({ error: 'Invalid projectId' });
+    }
+
     const newFile = new File({
       name,
       type,
       parentFolderId: parentFolderId || null,
-      projectId: new mongoose.Types.ObjectId(projectId),
+      projectId: projectObjectId,
       language: type === 'file' ? language : null,
       content: type === 'file' ? content : null,
     });
