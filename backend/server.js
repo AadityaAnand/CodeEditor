@@ -16,7 +16,10 @@ const corsOptions = {
 
 // enable CORS using the configured options and make sure preflight requests are handled
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+// `app.options('*', ...)` caused a path parsing error in some Express/path-to-regexp
+// versions ("Missing parameter name at index 1: *"). The global `cors` middleware
+// already handles preflight requests for routes when registered with `app.use`.
+// Removing the explicit app.options call resolves the crash.
 app.use(express.json());
 
 mongoose.connect(process.env.MONGODB_URI, {
