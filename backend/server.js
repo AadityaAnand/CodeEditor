@@ -16,10 +16,27 @@ const corsOptions = {
 
 // enable CORS using the configured options and make sure preflight requests are handled
 app.use(cors(corsOptions));
-// `app.options('*', ...)` caused a path parsing error in some Express/path-to-regexp
-// versions ("Missing parameter name at index 1: *"). The global `cors` middleware
-// already handles preflight requests for routes when registered with `app.use`.
-// Removing the explicit app.options call resolves the crash.
+// Some environments or older middleware can cause wildcard OPTION handlers
+// (e.g. `app.options('*', ...)`) to throw path parsing errors. To ensure a
+// reliable preflight response without relying on a wildcard route, add a
+// small middleware that returns the proper CORS headers for OPTIONS requests.
+// This avoids path-to-regexp issues while keeping preflight handling explicit.
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    // set CORS headers using our corsOptions values
+    const origin = Array.isArray(corsOptions.origin) ? corsOptions.origin[0] : corsOptions.origin;
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Methods', corsOptions.methods.join(', '));
+    res.header('Access-Control-Allow-Headers', corsOptions.allowedHeaders.join(', '));
+    if (corsOptions.credentials) {
+      res.header('Access-Control-Allow-Credentials', 'true');
+    }
+    // respond with 204 No Content for preflight
+    return res.sendStatus(204);
+  }
+  next();
+});
+
 app.use(express.json());
 
 mongoose.connect(process.env.MONGODB_URI, {
