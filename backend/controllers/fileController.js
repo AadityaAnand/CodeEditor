@@ -30,6 +30,16 @@ exports.createFile = async (req, res) => {
     });
 
     await newFile.save();
+    // Emit a socket event scoped to the project so connected clients can react
+    try {
+      if (global.io) {
+        const room = String(projectObjectId);
+        global.io.to(room).emit('file:created', newFile);
+      }
+    } catch (e) {
+      console.warn('Socket emit failed:', e.message);
+    }
+
     res.status(201).json(newFile);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -99,6 +109,16 @@ exports.updateFile = async (req, res) => {
       return res.status(404).json({ error: 'File not found' });
     }
 
+    // notify clients in the file's project room that a file was updated
+    try {
+      if (global.io) {
+        const room = String(file.projectId);
+        global.io.to(room).emit('file:updated', file);
+      }
+    } catch (e) {
+      console.warn('Socket emit failed:', e.message);
+    }
+
     res.json(file);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -119,6 +139,16 @@ exports.deleteFile = async (req, res) => {
     }
 
     await File.findByIdAndDelete(new mongoose.Types.ObjectId(fileId));
+
+    // notify clients in the file's project room that a file was deleted
+    try {
+      if (global.io) {
+        const room = String(file.projectId);
+        global.io.to(room).emit('file:deleted', { fileId });
+      }
+    } catch (e) {
+      console.warn('Socket emit failed:', e.message);
+    }
 
     res.json({ message: 'File deleted successfully' });
   } catch (error) {

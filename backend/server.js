@@ -5,6 +5,8 @@ const cors = require('cors');
 const { User, Project, File } = require('./models');
 
 const app = express();
+const http = require('http');
+const { Server } = require('socket.io');
 
 const corsOptions = {
   origin: process.env.CLIENT_ORIGIN || 'http://localhost:3000',
@@ -49,6 +51,37 @@ mongoose.connect(process.env.MONGODB_URI, {
 const fileRoutes = require('./routes/fileRoutes');
 console.log('✅ File routes loaded');
 
+// create HTTP server and attach socket.io so we can emit events from controllers
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: process.env.CLIENT_ORIGIN || 'http://localhost:3000',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    credentials: true,
+  },
+});
+
+io.on('connection', (socket) => {
+  console.log('🔌 socket connected:', socket.id);
+  socket.on('disconnect', () => console.log('🔌 socket disconnected:', socket.id));
+
+  // join a project room so events can be scoped to a project
+  socket.on('join-project', (projectId) => {
+    try {
+      if (projectId) {
+        socket.join(projectId);
+        console.log(`🔌 socket ${socket.id} joined project ${projectId}`);
+      }
+    } catch (e) {
+      console.warn('join-project handler error:', e.message);
+    }
+  });
+});
+
+// expose io for controllers (lightweight approach)
+global.io = io;
+
 app.get('/api/test', (req, res) => {
   res.json({ message: 'Backend is running!' });
 });
@@ -65,6 +98,6 @@ app.get('/api/debug/files', async (req, res) => {
 app.use('/api', fileRoutes);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });

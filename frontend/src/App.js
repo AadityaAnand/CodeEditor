@@ -2,12 +2,14 @@ import CodeEditor from './components/Editor/CodeEditor';
 import FileTree from './components/Editor/FileTree';
 import LanguageSelector from './components/Editor/LanguageSelector';
 import './App.css';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { io } from 'socket.io-client';
 
 function App() {
   const [language, setLanguage] = useState('javascript');
   const [selectedFile, setSelectedFile] = useState(null);
   const projectId = '690f4cd7d4cabc914608a3cf'; // Your project ID
+  const API = process.env.REACT_APP_API_URL || 'http://localhost:5000';
   
   const [files, setFiles] = useState([
     {
@@ -42,6 +44,59 @@ function App() {
     },
   ]);
 
+  // socket.io: connect and listen for file events to keep UI in sync
+  useEffect(() => {
+    const socket = io(API, { transports: ['websocket', 'polling'] });
+    socket.on('connect', () => {
+      console.log('socket connected', socket.id);
+      // join project room for scoped events
+      socket.emit('join-project', projectId);
+    });
+
+    socket.on('file:created', (file) => {
+      console.log('socket file:created', file);
+      setFiles((prev) => {
+        // avoid duplicates: if file with same _id exists, skip
+        if (prev.some((f) => String(f._id) === String(file._id))) return prev;
+        return [...prev.filter((f) => !(f.name === file.name && (f.parentFolderId || null) === (file.parentFolderId || null) && String(f._id).length > 10)), file];
+      });
+    });
+
+    socket.on('file:updated', (file) => {
+      console.log('socket file:updated', file);
+      setFiles((prev) => prev.map((f) => (String(f._id) === String(file._id) ? file : f)));
+      if (selectedFile && String(selectedFile._id) === String(file._id)) {
+        setSelectedFile(file);
+      }
+    });
+
+    socket.on('file:deleted', ({ fileId }) => {
+      console.log('socket file:deleted', fileId);
+      setFiles((prev) => prev.filter((f) => f._id !== fileId && f.parentFolderId !== fileId));
+      if (selectedFile && selectedFile._id === fileId) setSelectedFile(null);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [API, selectedFile]);
+
+  // load project files on mount
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch(`${API}/api/projects/${projectId}/tree`);
+        if (!res.ok) throw new Error('Failed to load project files');
+        const data = await res.json();
+        setFiles(data);
+      } catch (e) {
+        console.warn('Could not load project tree:', e.message);
+      }
+    };
+
+    load();
+  }, [API, projectId]);
+
   const handleSelectFile = (file) => {
     setSelectedFile(file);
     setLanguage(file.language || 'javascript');
@@ -59,10 +114,11 @@ function App() {
       language: 'javascript',
       content: '',
     };
-setFiles([...files, newFile]);
+    // optimistically update UI
+    setFiles((prev) => [...prev, newFile]);
 
     try {
-      const response = await fetch(`http://localhost:5000/api/projects/${projectId}/files`, {
+      const response = await fetch(`${API}/api/projects/${projectId}/files`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newFile),
@@ -74,6 +130,11 @@ setFiles([...files, newFile]);
 
       const savedFile = await response.json();
       console.log('✅ File saved:', savedFile);
+      // replace any optimistic entry with the saved file (match by name+parent)
+      setFiles((prev) => {
+        const withoutTemp = prev.filter((f) => !(f.name === savedFile.name && (f.parentFolderId || null) === (savedFile.parentFolderId || null) && String(f._id).length > 10));
+        return [...withoutTemp, savedFile];
+      });
     } catch (error) {
       console.error('Error creating file:', error);
       alert('Failed to save file to backend');
@@ -94,7 +155,7 @@ setFiles([...files, newFile]);
     setFiles([...files, newFolder]);
 
     try {
-      const response = await fetch(`http://localhost:5000/api/projects/${projectId}/files`, {
+      const response = await fetch(`${API}/api/projects/${projectId}/files`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newFolder),
@@ -106,6 +167,10 @@ setFiles([...files, newFile]);
 
       const savedFolder = await response.json();
       console.log('✅ Folder saved:', savedFolder);
+      setFiles((prev) => {
+        const withoutTemp = prev.filter((f) => !(f.name === savedFolder.name && (f.parentFolderId || null) === (savedFolder.parentFolderId || null) && String(f._id).length > 10));
+        return [...withoutTemp, savedFolder];
+      });
     } catch (error) {
       console.error('Error creating folder:', error);
       alert('Failed to save folder to backend');
@@ -122,7 +187,7 @@ setFiles([...files, newFile]);
 
    
     try {
-      const response = await fetch(`http://localhost:5000/api/files/${fileId}`, {
+      const response = await fetch(`${API}/api/files/${fileId}`, {
         method: 'DELETE',
       });
 
@@ -152,7 +217,7 @@ setFiles([...files, newFile]);
 
     
     try {
-      const response = await fetch(`http://localhost:5000/api/files/${fileId}`, {
+      const response = await fetch(`${API}/api/files/${fileId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newName }),
