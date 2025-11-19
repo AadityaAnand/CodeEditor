@@ -50,6 +50,7 @@ mongoose.connect(process.env.MONGODB_URI, {
 
 const fileRoutes = require('./routes/fileRoutes');
 console.log('✅ File routes loaded');
+const authRoutes = require('./routes/authRoutes');
 
 // create HTTP server and attach socket.io so we can emit events from controllers
 const server = http.createServer(app);
@@ -86,6 +87,9 @@ app.get('/api/test', (req, res) => {
   res.json({ message: 'Backend is running!' });
 });
 
+// authentication routes
+app.use('/auth', authRoutes);
+
 app.get('/api/debug/files', async (req, res) => {
   try {
     const files = await File.find({}).limit(10);
@@ -101,3 +105,6 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
+
+// export app/server for tests
+module.exports = { app, server };

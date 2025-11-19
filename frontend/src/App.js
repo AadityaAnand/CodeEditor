@@ -4,12 +4,23 @@ import LanguageSelector from './components/Editor/LanguageSelector';
 import './App.css';
 import { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
+import Login from './components/Auth/Login';
+import Register from './components/Auth/Register';
 
 function App() {
   const [language, setLanguage] = useState('javascript');
   const [selectedFile, setSelectedFile] = useState(null);
   const projectId = '690f4cd7d4cabc914608a3cf'; // Your project ID
-  const API = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  const API = process.env.REACT_APP_API_URL || 'http://localhost:5050';
+    const [authToken, setAuthToken] = useState(() => localStorage.getItem('token'));
+    const [authUser, setAuthUser] = useState(() => {
+      try {
+        const raw = localStorage.getItem('user');
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) { return null; }
+    });
+    const [showLogin, setShowLogin] = useState(false);
+    const [showRegister, setShowRegister] = useState(false);
   
   const [files, setFiles] = useState([
     {
@@ -46,7 +57,7 @@ function App() {
 
   // socket.io: connect and listen for file events to keep UI in sync
   useEffect(() => {
-    const socket = io(API, { transports: ['websocket', 'polling'] });
+    const socket = io(API, { transports: ['websocket', 'polling'], auth: { token: authToken } });
     socket.on('connect', () => {
       console.log('socket connected', socket.id);
       // join project room for scoped events
@@ -79,27 +90,45 @@ function App() {
     return () => {
       socket.disconnect();
     };
-  }, [API, selectedFile]);
+  }, [API, selectedFile, authToken]);
 
   // load project files on mount
   useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await fetch(`${API}/api/projects/${projectId}/tree`);
-        if (!res.ok) throw new Error('Failed to load project files');
-        const data = await res.json();
-        setFiles(data);
-      } catch (e) {
-        console.warn('Could not load project tree:', e.message);
-      }
-    };
+  const load = async () => {
+    try {
+      const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+      const res = await fetch(`${API}/api/projects/${projectId}/tree`, { headers });
+      if (!res.ok) throw new Error('Failed to load project files');
+      const data = await res.json();
+      setFiles(data);
+    } catch (e) {
+      console.warn('Could not load project tree:', e.message);
+    }
+  };
 
-    load();
-  }, [API, projectId]);
+  load();
+  }, [API, projectId, authToken]);
 
   const handleSelectFile = (file) => {
     setSelectedFile(file);
     setLanguage(file.language || 'javascript');
+  };
+
+  // auth handlers
+  const handleAuthSuccess = (token, user) => {
+    setAuthToken(token);
+    setAuthUser(user);
+    try { localStorage.setItem('token', token); localStorage.setItem('user', JSON.stringify(user)); } catch (e) {}
+    setShowLogin(false);
+    setShowRegister(false);
+  };
+
+  const handleLogout = () => {
+    setAuthToken(null);
+    setAuthUser(null);
+    try { localStorage.removeItem('token'); localStorage.removeItem('user'); } catch (e) {}
+    // reload to reset socket connection and state
+    window.location.reload();
   };
 
   const handleCreateFile = async () => {
@@ -118,9 +147,10 @@ function App() {
     setFiles((prev) => [...prev, newFile]);
 
     try {
+      const headers = { 'Content-Type': 'application/json', ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) };
       const response = await fetch(`${API}/api/projects/${projectId}/files`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(newFile),
       });
 
@@ -155,9 +185,10 @@ function App() {
     setFiles([...files, newFolder]);
 
     try {
+      const headers = { 'Content-Type': 'application/json', ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) };
       const response = await fetch(`${API}/api/projects/${projectId}/files`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(newFolder),
       });
 
@@ -187,8 +218,10 @@ function App() {
 
    
     try {
+      const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
       const response = await fetch(`${API}/api/files/${fileId}`, {
         method: 'DELETE',
+        headers,
       });
 
       if (!response.ok) {
@@ -217,9 +250,10 @@ function App() {
 
     
     try {
+      const headers = { 'Content-Type': 'application/json', ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) };
       const response = await fetch(`${API}/api/files/${fileId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ name: newName }),
       });
 
@@ -237,39 +271,33 @@ function App() {
 
   return (
     <div className="App">
-      <header className="header">
-        <h1>Collaborative Code Editor</h1>
-        <div style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
-          <button 
-            onClick={handleCreateFile}
-            style={{
-              padding: '8px 12px',
-              background: '#007ACC',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '12px',
-            }}
-          >
-            + New File
-          </button>
-          <button 
-            onClick={handleCreateFolder}
-            style={{
-              padding: '8px 12px',
-              background: '#007ACC',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '12px',
-            }}
-          >
-            + New Folder
-          </button>
+      <header className="header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <h1>Collaborative Code Editor</h1>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={handleCreateFile} style={{ padding: '8px 12px', background: '#007ACC', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>+ New File</button>
+            <button onClick={handleCreateFolder} style={{ padding: '8px 12px', background: '#007ACC', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>+ New Folder</button>
+          </div>
+          <div>
+            {authUser ? (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span>Hi, {authUser.name || authUser.email}</span>
+                <button onClick={handleLogout} style={{ padding: '6px 10px' }}>Logout</button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => setShowLogin(true)} style={{ padding: '6px 10px' }}>Login</button>
+                <button onClick={() => setShowRegister(true)} style={{ padding: '6px 10px' }}>Register</button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
+      {showLogin && <Login apiBase={API} onSuccess={handleAuthSuccess} onCancel={() => setShowLogin(false)} />}
+      {showRegister && <Register apiBase={API} onSuccess={handleAuthSuccess} onCancel={() => setShowRegister(false)} />}
+
       <LanguageSelector
         language={language}
         onLanguageChange={setLanguage}
