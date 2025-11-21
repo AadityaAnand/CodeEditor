@@ -11,8 +11,11 @@ import Register from './components/Auth/Register';
 function App() {
   const [language, setLanguage] = useState('javascript');
   const [selectedFile, setSelectedFile] = useState(null);
-  const projectId = '690f4cd7d4cabc914608a3cf'; // Your project ID
   const API = process.env.REACT_APP_API_URL || 'http://localhost:5050';
+  const [projects, setProjects] = useState([]);
+  const [selectedProjectId, setSelectedProjectId] = useState(() => {
+    try { return localStorage.getItem('selectedProjectId'); } catch (e) { return null; }
+  });
     const [authToken, setAuthToken] = useState(() => localStorage.getItem('token'));
     const [authUser, setAuthUser] = useState(() => {
       try {
@@ -62,9 +65,9 @@ function App() {
     socket.on('connect', () => {
       console.log('socket connected', socket.id);
       // join project room for scoped events
-      socket.emit('join-project', projectId);
+      if (selectedProjectId) socket.emit('join-project', selectedProjectId);
     });
-
+        const res = await apiFetch(`/api/projects/${selectedProjectId}/tree`);
     socket.on('file:created', (file) => {
       console.log('socket file:created', file);
       setFiles((prev) => {
@@ -93,7 +96,7 @@ function App() {
     };
   }, [API, selectedFile, authToken]);
 
-  // load project files on mount
+            try { localStorage.setItem('selectedProjectId', String(list[0]._id)); } catch (e) {}
   useEffect(() => {
     const load = async () => {
       try {
