@@ -110,7 +110,10 @@ app.get('/api/debug/files', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+// project routes (protected inside)
+app.use('/api/projects', projectRoutes);
 
+// file routes (under /api/...)
 app.use('/api', fileRoutes);
 
 // default to 5050 locally to avoid clashes with OS services
