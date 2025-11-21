@@ -1,6 +1,15 @@
 import { useRef, useState, useEffect } from 'react';
 import MonacoEditor from '@monaco-editor/react';
 
+// small debounce helper
+function debounce(fn, wait) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), wait);
+  };
+}
+
 function CodeEditor({ language, selectedFile }) {
   const editorRef = useRef(null);
   const [code, setCode] = useState('');
@@ -25,9 +34,45 @@ function CodeEditor({ language, selectedFile }) {
     console.log('Editor mounted');
   };
 
+  // emit edits to socket (debounced)
+  const emitEdit = useRef(null);
+  useEffect(() => {
+    emitEdit.current = debounce((fileId, content) => {
+      try {
+        const socket = window.__appSocket;
+        if (!socket) return;
+        socket.emit('file:edit', { fileId, content });
+      } catch (e) {
+        console.warn('emitEdit error', e.message);
+      }
+    }, 300);
+  }, []);
+
   const handleEditorChange = (value) => {
     setCode(value);
+    if (selectedFile && emitEdit.current) {
+      emitEdit.current(selectedFile._id, value);
+    }
   };
+
+  // listen for remote updates to keep the editor in sync
+  useEffect(() => {
+    const onFileUpdated = (file) => {
+      if (!selectedFile) return;
+      if (String(file._id) !== String(selectedFile._id)) return;
+      // apply incoming content if it's different
+      if (file.content !== code) {
+        setCode(file.content || '');
+      }
+    };
+
+    const socket = window.__appSocket;
+    if (socket) socket.on('file:updated', onFileUpdated);
+    // cleanup
+    return () => {
+      if (socket) socket.off('file:updated', onFileUpdated);
+    };
+  }, [selectedFile, code]);
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>

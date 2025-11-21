@@ -63,6 +63,8 @@ function App() {
   // socket.io: connect and listen for file events to keep UI in sync
   useEffect(() => {
     const socket = io(API, { transports: ['websocket', 'polling'], auth: { token: authToken } });
+    // expose socket globally for editor components to reuse
+    try { window.__appSocket = socket; window.dispatchEvent(new Event('socket-ready')); } catch (e) {}
     socket.on('connect', () => {
       console.log('socket connected', socket.id);
       // join project room for scoped events

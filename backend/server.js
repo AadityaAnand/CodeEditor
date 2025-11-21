@@ -90,6 +90,33 @@ io.on('connection', (socket) => {
       console.warn('join-project handler error:', e.message);
     }
   });
+
+  // receive live edits from clients and broadcast to project room
+  socket.on('file:edit', async ({ fileId, content }) => {
+    try {
+      if (!fileId) return;
+      const file = await File.findById(fileId);
+      if (!file) return;
+
+      // check access: owner or collaborator
+      const project = await Project.findById(file.projectId);
+      if (!project) return;
+      const userId = socket.user && socket.user.id;
+      const isOwner = String(project.owner) === String(userId);
+      const isCollaborator = project.collaborators && project.collaborators.some((c) => String(c.userId) === String(userId));
+      if (!isOwner && !isCollaborator) return;
+
+      // update the file content (authoritative save)
+      file.content = content;
+      await file.save();
+
+      // broadcast updated file to the project room
+      const room = String(file.projectId);
+      io.to(room).emit('file:updated', file);
+    } catch (e) {
+      console.warn('file:edit handler error:', e.message);
+    }
+  });
 });
 
 // expose io for controllers (lightweight approach)
