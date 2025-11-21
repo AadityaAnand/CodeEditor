@@ -7,6 +7,7 @@ import { io } from 'socket.io-client';
 import apiFetch from './services/api';
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
+import ProjectSelector from './components/ProjectSelector';
 
 function App() {
   const [language, setLanguage] = useState('javascript');
@@ -110,6 +111,54 @@ function App() {
 
     load();
   }, [selectedProjectId, authToken]);
+
+  // validate token and load user/projects on mount
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        if (!authToken) return;
+        const res = await apiFetch('/auth/me');
+        if (!res.ok) { handleLogout(); return; }
+        const user = await res.json();
+        setAuthUser(user);
+
+        // load user's projects
+        const pRes = await apiFetch('/api/projects');
+        if (pRes.ok) {
+          const list = await pRes.json();
+          setProjects(list || []);
+          if (!selectedProjectId && list && list.length) {
+            setSelectedProjectId(String(list[0]._id));
+            try { localStorage.setItem('selectedProjectId', String(list[0]._id)); } catch (e) {}
+          }
+        }
+      } catch (e) {
+        console.warn('Auth init failed', e.message);
+      }
+    };
+
+    initAuth();
+  }, [authToken]);
+
+  // project selection handlers
+  const handleSelectProject = (projectId) => {
+    setSelectedProjectId(projectId || null);
+    try { localStorage.setItem('selectedProjectId', projectId || ''); } catch (e) {}
+  };
+
+  const handleCreateProject = async ({ name }) => {
+    const res = await apiFetch('/api/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) throw new Error('Failed to create project');
+    const proj = await res.json();
+    const next = [...(projects || []), proj];
+    setProjects(next);
+    setSelectedProjectId(String(proj._id));
+    try { localStorage.setItem('selectedProjectId', String(proj._id)); } catch (e) {}
+  };
 
   const handleSelectFile = (file) => {
     setSelectedFile(file);
@@ -273,9 +322,12 @@ function App() {
           <h1>Collaborative Code Editor</h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={handleCreateFile} style={{ padding: '8px 12px', background: '#007ACC', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>+ New File</button>
-            <button onClick={handleCreateFolder} style={{ padding: '8px 12px', background: '#007ACC', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>+ New Folder</button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <ProjectSelector projects={projects} selectedProjectId={selectedProjectId} onSelect={handleSelectProject} onCreate={handleCreateProject} />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={handleCreateFile} style={{ padding: '8px 12px', background: '#007ACC', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>+ New File</button>
+              <button onClick={handleCreateFolder} style={{ padding: '8px 12px', background: '#007ACC', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>+ New Folder</button>
+            </div>
           </div>
           <div>
             {authUser ? (
