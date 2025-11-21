@@ -184,6 +184,22 @@ io.on('connection', (socket) => {
       console.warn('presence:leave error:', e.message);
     }
   });
+
+  // update cursor position for a user on a file and broadcast presence
+  socket.on('presence:cursor', ({ fileId, cursor }) => {
+    try {
+      if (!fileId) return;
+      const map = presenceMap.get(fileId);
+      if (!map) return;
+      const entry = map.get(socket.id);
+      if (!entry) return;
+      entry.cursor = cursor || null;
+      map.set(socket.id, entry);
+      emitPresenceUpdate(fileId);
+    } catch (e) {
+      console.warn('presence:cursor error:', e.message);
+    }
+  });
 });
 
 // expose io for controllers (lightweight approach)

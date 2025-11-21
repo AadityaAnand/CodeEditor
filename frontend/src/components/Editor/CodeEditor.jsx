@@ -32,8 +32,13 @@ function CodeEditor({ language, selectedFile }) {
 
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor;
+    monacoRef.current = monaco;
     console.log('Editor mounted');
   };
+
+  // helper: manage decorations for remote cursors
+  const decorationsRef = useRef([]);
+  const monacoRef = useRef(null);
 
   // emit edits to socket (debounced)
   const emitEdit = useRef(null);
@@ -55,6 +60,41 @@ function CodeEditor({ language, selectedFile }) {
       emitEdit.current(selectedFile._id, value);
     }
   };
+
+  // emit cursor position (throttled via requestAnimationFrame)
+  const pendingCursor = useRef(null);
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    const onCursorChange = () => {
+      if (!selectedFile) return;
+      const pos = editor.getPosition();
+      if (!pos) return;
+      const cursor = { lineNumber: pos.lineNumber, column: pos.column };
+      // throttle via RAF
+      pendingCursor.current = cursor;
+    };
+
+    const rafTicker = () => {
+      if (pendingCursor.current && selectedFile) {
+        try {
+          const socket = getSocket();
+          socket.emit('presence:cursor', { fileId: selectedFile._id, cursor: pendingCursor.current });
+        } catch (e) { console.warn('emit cursor failed', e.message); }
+        pendingCursor.current = null;
+      }
+      requestAnimationFrame(rafTicker);
+    };
+
+    editor.onDidChangeCursorPosition(onCursorChange);
+    const rafId = requestAnimationFrame(rafTicker);
+
+    return () => {
+      try { editor.offDidChangeCursorPosition(onCursorChange); } catch (e) {}
+      cancelAnimationFrame(rafId);
+    };
+  }, [selectedFile]);
 
   // listen for remote updates to keep the editor in sync
   useEffect(() => {
@@ -80,7 +120,37 @@ function CodeEditor({ language, selectedFile }) {
   const currentFileRef = useRef(null);
   useEffect(() => {
     const socket = getSocket();
-    const onPresenceUpdate = (users) => setPresenceUsers(users || []);
+    const onPresenceUpdate = (users) => {
+      setPresenceUsers(users || []);
+      // render remote cursors as editor decorations
+      const editor = editorRef.current;
+      if (!editor) return;
+
+      // build decorations mapping
+      const newDecorations = [];
+      (users || []).forEach((u) => {
+        if (!u.cursor || !u.cursor.lineNumber) return;
+        // skip our own socket entry
+        if (u.socketId === (socket && socket.id)) return;
+        const monaco = monacoRef.current;
+        if (!monaco) return;
+        const range = new monaco.Range(u.cursor.lineNumber, u.cursor.column, u.cursor.lineNumber, u.cursor.column);
+        newDecorations.push({ range, options: { className: 'remote-cursor', hoverMessage: { value: u.name || 'User' } } });
+      });
+      try {
+        // monaco.Range is provided via editor.getModel().getFullModelRange? define below if undefined
+        if (newDecorations.length > 0) {
+          const ids = editor.deltaDecorations(decorationsRef.current || [], newDecorations);
+          decorationsRef.current = ids;
+        } else {
+          // clear decorations
+          const ids = editor.deltaDecorations(decorationsRef.current || [], []);
+          decorationsRef.current = [];
+        }
+      } catch (e) {
+        // monaco may not be in global scope — skip rendering when unavailable
+      }
+    };
 
     async function joinIfNeeded() {
       if (!selectedFile) return;
@@ -110,6 +180,11 @@ function CodeEditor({ language, selectedFile }) {
       }
       currentFileRef.current = null;
       setPresenceUsers([]);
+      // clear decorations
+      try {
+        const editor = editorRef.current;
+        if (editor) editor.deltaDecorations(decorationsRef.current || [], []);
+      } catch (e) {}
     };
   }, [selectedFile]);
 
