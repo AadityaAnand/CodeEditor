@@ -10,11 +10,17 @@ const projectSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
-    userId: {
+    owner: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
     },
+    collaborators: [
+      {
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        role: { type: String, enum: ['viewer', 'editor', 'owner'], default: 'editor' },
+      },
+    ],
   },
   {
     timestamps: true,

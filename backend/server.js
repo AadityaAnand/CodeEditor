@@ -41,16 +41,15 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+mongoose.connect(process.env.MONGODB_URI)
 .then(() => console.log('✅ MongoDB connected'))
 .catch((err) => console.log('❌ MongoDB connection error:', err));
 
 const fileRoutes = require('./routes/fileRoutes');
 console.log('✅ File routes loaded');
 const authRoutes = require('./routes/authRoutes');
+const projectRoutes = require('./routes/projectRoutes');
+const socketAuth = require('./middleware/socketAuth');
 
 // create HTTP server and attach socket.io so we can emit events from controllers
 const server = http.createServer(app);
@@ -63,16 +62,29 @@ const io = new Server(server, {
   },
 });
 
+// attach socket auth middleware so sockets are authenticated via JWT
+io.use((socket, next) => socketAuth(socket, next));
+
 io.on('connection', (socket) => {
   console.log('🔌 socket connected:', socket.id);
   socket.on('disconnect', () => console.log('🔌 socket disconnected:', socket.id));
 
   // join a project room so events can be scoped to a project
-  socket.on('join-project', (projectId) => {
+  socket.on('join-project', async (projectId) => {
     try {
-      if (projectId) {
+      if (!projectId) return;
+      const project = await Project.findById(projectId);
+      if (!project) return console.warn('join-project: project not found', projectId);
+
+      const userId = socket.user && socket.user.id;
+      const isOwner = String(project.owner) === String(userId);
+      const isCollaborator = project.collaborators && project.collaborators.some((c) => String(c.userId) === String(userId));
+
+      if (isOwner || isCollaborator) {
         socket.join(projectId);
         console.log(`🔌 socket ${socket.id} joined project ${projectId}`);
+      } else {
+        console.warn(`🔒 socket ${socket.id} attempted to join project ${projectId} without access`);
       }
     } catch (e) {
       console.warn('join-project handler error:', e.message);
