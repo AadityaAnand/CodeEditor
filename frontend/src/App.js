@@ -67,7 +67,6 @@ function App() {
       // join project room for scoped events
       if (selectedProjectId) socket.emit('join-project', selectedProjectId);
     });
-        const res = await apiFetch(`/api/projects/${selectedProjectId}/tree`);
     socket.on('file:created', (file) => {
       console.log('socket file:created', file);
       setFiles((prev) => {
@@ -94,13 +93,13 @@ function App() {
     return () => {
       socket.disconnect();
     };
-  }, [API, selectedFile, authToken]);
+  }, [API, selectedFile, authToken, selectedProjectId]);
 
-            try { localStorage.setItem('selectedProjectId', String(list[0]._id)); } catch (e) {}
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await apiFetch(`/api/projects/${projectId}/tree`);
+        if (!selectedProjectId) return;
+        const res = await apiFetch(`/api/projects/${selectedProjectId}/tree`);
         if (!res.ok) throw new Error('Failed to load project files');
         const data = await res.json();
         setFiles(data);
@@ -110,7 +109,7 @@ function App() {
     };
 
     load();
-  }, [projectId, authToken]);
+  }, [selectedProjectId, authToken]);
 
   const handleSelectFile = (file) => {
     setSelectedFile(file);
@@ -150,7 +149,7 @@ function App() {
     setFiles((prev) => [...prev, newFile]);
 
     try {
-      const response = await apiFetch(`/api/projects/${projectId}/files`, {
+  const response = await apiFetch(`/api/projects/${selectedProjectId}/files`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newFile),
@@ -187,7 +186,7 @@ function App() {
     setFiles([...files, newFolder]);
 
     try {
-      const response = await apiFetch(`/api/projects/${projectId}/files`, {
+  const response = await apiFetch(`/api/projects/${selectedProjectId}/files`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newFolder),
@@ -306,7 +305,7 @@ function App() {
           onSelectFile={handleSelectFile}
           onDeleteFile={handleDeleteFile}
           onRenameFile={handleRenameFile}
-          projectId={projectId}
+          projectId={selectedProjectId}
         />
         <CodeEditor 
           language={language}
