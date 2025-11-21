@@ -4,6 +4,7 @@ import LanguageSelector from './components/Editor/LanguageSelector';
 import './App.css';
 import { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
+import apiFetch from './services/api';
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
 
@@ -94,20 +95,19 @@ function App() {
 
   // load project files on mount
   useEffect(() => {
-  const load = async () => {
-    try {
-      const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
-      const res = await fetch(`${API}/api/projects/${projectId}/tree`, { headers });
-      if (!res.ok) throw new Error('Failed to load project files');
-      const data = await res.json();
-      setFiles(data);
-    } catch (e) {
-      console.warn('Could not load project tree:', e.message);
-    }
-  };
+    const load = async () => {
+      try {
+        const res = await apiFetch(`/api/projects/${projectId}/tree`);
+        if (!res.ok) throw new Error('Failed to load project files');
+        const data = await res.json();
+        setFiles(data);
+      } catch (e) {
+        console.warn('Could not load project tree:', e.message);
+      }
+    };
 
-  load();
-  }, [API, projectId, authToken]);
+    load();
+  }, [projectId, authToken]);
 
   const handleSelectFile = (file) => {
     setSelectedFile(file);
@@ -147,10 +147,9 @@ function App() {
     setFiles((prev) => [...prev, newFile]);
 
     try {
-      const headers = { 'Content-Type': 'application/json', ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) };
-      const response = await fetch(`${API}/api/projects/${projectId}/files`, {
+      const response = await apiFetch(`/api/projects/${projectId}/files`, {
         method: 'POST',
-        headers,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newFile),
       });
 
@@ -185,10 +184,9 @@ function App() {
     setFiles([...files, newFolder]);
 
     try {
-      const headers = { 'Content-Type': 'application/json', ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) };
-      const response = await fetch(`${API}/api/projects/${projectId}/files`, {
+      const response = await apiFetch(`/api/projects/${projectId}/files`, {
         method: 'POST',
-        headers,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newFolder),
       });
 
@@ -218,10 +216,8 @@ function App() {
 
    
     try {
-      const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
-      const response = await fetch(`${API}/api/files/${fileId}`, {
+      const response = await apiFetch(`/api/files/${fileId}`, {
         method: 'DELETE',
-        headers,
       });
 
       if (!response.ok) {
@@ -250,10 +246,9 @@ function App() {
 
     
     try {
-      const headers = { 'Content-Type': 'application/json', ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) };
-      const response = await fetch(`${API}/api/files/${fileId}`, {
+      const response = await apiFetch(`/api/files/${fileId}`, {
         method: 'PUT',
-        headers,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newName }),
       });
 
