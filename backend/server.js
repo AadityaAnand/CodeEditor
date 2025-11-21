@@ -62,12 +62,45 @@ const io = new Server(server, {
   },
 });
 
+// in-memory presence tracking: fileId -> Map(socketId -> { userId, name, cursor })
+const presenceMap = new Map();
+
+function emitPresenceUpdate(fileId) {
+  const map = presenceMap.get(fileId);
+  const users = [];
+  if (map) {
+    for (const [, info] of map.entries()) {
+      users.push(info);
+    }
+  }
+  try {
+    io.to(`presence:${fileId}`).emit('presence:update', users);
+  } catch (e) {
+    console.warn('emitPresenceUpdate failed:', e.message);
+  }
+}
+
 // attach socket auth middleware so sockets are authenticated via JWT
 io.use((socket, next) => socketAuth(socket, next));
 
 io.on('connection', (socket) => {
   console.log('🔌 socket connected:', socket.id);
-  socket.on('disconnect', () => console.log('🔌 socket disconnected:', socket.id));
+  socket.on('disconnect', () => {
+    console.log('🔌 socket disconnected:', socket.id);
+    // remove socket from any presence lists it was part of
+    try {
+      for (const [fileId, map] of presenceMap.entries()) {
+        if (map.has(socket.id)) {
+          map.delete(socket.id);
+          // cleanup empty maps
+          if (map.size === 0) presenceMap.delete(fileId);
+          emitPresenceUpdate(fileId);
+        }
+      }
+    } catch (e) {
+      console.warn('disconnect presence cleanup error:', e.message);
+    }
+  });
 
   // join a project room so events can be scoped to a project
   socket.on('join-project', async (projectId) => {
@@ -115,6 +148,40 @@ io.on('connection', (socket) => {
       io.to(room).emit('file:updated', file);
     } catch (e) {
       console.warn('file:edit handler error:', e.message);
+    }
+  });
+
+  // presence: join/leave a file-level presence group
+  socket.on('presence:join', ({ fileId, user, cursor }) => {
+    try {
+      if (!fileId || !user) return;
+      // add to presence map
+      let map = presenceMap.get(fileId);
+      if (!map) {
+        map = new Map();
+        presenceMap.set(fileId, map);
+      }
+      map.set(socket.id, { socketId: socket.id, userId: user.id, name: user.name || user.email || 'Anonymous', cursor: cursor || null });
+      // join a presence-specific room so clients can subscribe easily
+      socket.join(`presence:${fileId}`);
+      emitPresenceUpdate(fileId);
+    } catch (e) {
+      console.warn('presence:join error:', e.message);
+    }
+  });
+
+  socket.on('presence:leave', ({ fileId }) => {
+    try {
+      if (!fileId) return;
+      const map = presenceMap.get(fileId);
+      if (map && map.has(socket.id)) {
+        map.delete(socket.id);
+        if (map.size === 0) presenceMap.delete(fileId);
+        socket.leave(`presence:${fileId}`);
+        emitPresenceUpdate(fileId);
+      }
+    } catch (e) {
+      console.warn('presence:leave error:', e.message);
     }
   });
 });

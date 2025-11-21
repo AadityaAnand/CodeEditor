@@ -3,7 +3,7 @@ import FileTree from './components/Editor/FileTree';
 import LanguageSelector from './components/Editor/LanguageSelector';
 import './App.css';
 import { useState, useEffect } from 'react';
-import { io } from 'socket.io-client';
+import { getSocket } from './services/socket';
 import apiFetch from './services/api';
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
@@ -62,8 +62,8 @@ function App() {
 
   // socket.io: connect and listen for file events to keep UI in sync
   useEffect(() => {
-    const socket = io(API, { transports: ['websocket', 'polling'], auth: { token: authToken } });
-    // expose socket globally for editor components to reuse
+    const socket = getSocket(authToken);
+    // expose socket globally for editor components to reuse (backwards compat)
     try { window.__appSocket = socket; window.dispatchEvent(new Event('socket-ready')); } catch (e) {}
     socket.on('connect', () => {
       console.log('socket connected', socket.id);
