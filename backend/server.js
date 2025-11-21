@@ -101,7 +101,8 @@ app.get('/api/debug/files', async (req, res) => {
 
 app.use('/api', fileRoutes);
 
-const PORT = process.env.PORT || 5000;
+// default to 5050 locally to avoid clashes with OS services
+const PORT = process.env.PORT || 5050;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
