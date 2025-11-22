@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import apiFetch from '../../services/api';
 
-export default function HistoryPanel({ fileId, onClose }) {
+export default function HistoryPanel({ fileId, onClose, onRevert }) {
   const [versions, setVersions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -26,8 +26,8 @@ export default function HistoryPanel({ fileId, onClose }) {
   }, [fileId]);
 
   const handleRevert = async (versionId) => {
-    if (!fileId || !versionId) return;
-    if (!confirm('Revert to this version? This will create a new snapshot of the current content.')) return;
+  if (!fileId || !versionId) return;
+  if (!window.confirm('Revert to this version? This will create a new snapshot of the current content.')) return;
     try {
       setReverting(true);
       const res = await apiFetch(`/api/files/${fileId}/revert`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ versionId }) });
