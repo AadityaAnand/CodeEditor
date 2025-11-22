@@ -21,3 +21,8 @@
   border-left: 2px solid rgba(255,140,0,0.9);
   margin-left: -1px;
 }
+
+.remote-caret-badge {
+  pointer-events: none;
+  transform: translateY(-100%);
+}

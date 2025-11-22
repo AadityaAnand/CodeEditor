@@ -39,6 +39,10 @@ function CodeEditor({ language, selectedFile }) {
   // helper: manage decorations for remote cursors
   const decorationsRef = useRef([]);
   const monacoRef = useRef(null);
+  // map socketId -> { widget, dom, className }
+  const remoteWidgetsRef = useRef({});
+  // a <style> element to inject per-user CSS for caret color
+  const styleElRef = useRef(null);
 
   // emit edits to socket (debounced)
   const emitEdit = useRef(null);
@@ -122,33 +126,88 @@ function CodeEditor({ language, selectedFile }) {
     const socket = getSocket();
     const onPresenceUpdate = (users) => {
       setPresenceUsers(users || []);
-      // render remote cursors as editor decorations
       const editor = editorRef.current;
-      if (!editor) return;
+      const monaco = monacoRef.current;
+      if (!editor || !monaco) return;
 
-      // build decorations mapping
-      const newDecorations = [];
+      // ensure style element exists for per-user caret CSS
+      if (!styleElRef.current) {
+        const el = document.createElement('style');
+        el.setAttribute('data-remote-cursors', 'true');
+        document.head.appendChild(el);
+        styleElRef.current = el;
+      }
+
+      const decorations = [];
+      const keepWidgetIds = new Set();
+
       (users || []).forEach((u) => {
         if (!u.cursor || !u.cursor.lineNumber) return;
         // skip our own socket entry
         if (u.socketId === (socket && socket.id)) return;
-        const monaco = monacoRef.current;
-        if (!monaco) return;
-        const range = new monaco.Range(u.cursor.lineNumber, u.cursor.column, u.cursor.lineNumber, u.cursor.column);
-        newDecorations.push({ range, options: { className: 'remote-cursor', hoverMessage: { value: u.name || 'User' } } });
-      });
-      try {
-        // monaco.Range is provided via editor.getModel().getFullModelRange? define below if undefined
-        if (newDecorations.length > 0) {
-          const ids = editor.deltaDecorations(decorationsRef.current || [], newDecorations);
-          decorationsRef.current = ids;
-        } else {
-          // clear decorations
-          const ids = editor.deltaDecorations(decorationsRef.current || [], []);
-          decorationsRef.current = [];
+
+        // create per-user classname and CSS for caret color
+        const safeId = String(u.socketId).replace(/[^a-zA-Z0-9_-]/g, '_');
+        const className = `remote_cursor_before_${safeId}`;
+        const color = getColorForString(u.userId || u.socketId || u.name || safeId);
+        const cssRule = `.${className}::before { content: ''; display:inline-block; width:0px; height:1em; margin-left:-1px; border-left:2px solid ${color}; position:relative; top:0px; }`;
+        if (styleElRef.current && !styleElRef.current.innerHTML.includes(className)) {
+          styleElRef.current.innerHTML += cssRule;
         }
+
+        // add decoration to show caret at cursor position
+        const range = new monaco.Range(u.cursor.lineNumber, u.cursor.column, u.cursor.lineNumber, u.cursor.column);
+        decorations.push({ range, options: { beforeContentClassName: className } });
+
+        // manage name badge widget
+        try {
+          let entry = remoteWidgetsRef.current[u.socketId];
+          if (entry && entry.widget) {
+            // update dom content and style
+            entry.dom.textContent = u.name || 'Anon';
+            entry.dom.style.background = color;
+            // request reposition by updating widget's getPosition (we store as function)
+            entry.getPosition = () => ({ position: { lineNumber: u.cursor.lineNumber, column: Math.max(1, u.cursor.column) }, preference: [monaco.editor.ContentWidgetPositionPreference.ABOVE] });
+            try { editor.layoutContentWidget(entry.widget); } catch (e) {}
+          } else {
+            const dom = document.createElement('div');
+            dom.className = 'remote-caret-badge';
+            dom.textContent = u.name || 'Anon';
+            dom.style.background = color;
+            dom.style.color = '#fff';
+            dom.style.padding = '2px 6px';
+            dom.style.fontSize = '11px';
+            dom.style.borderRadius = '8px';
+            dom.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
+
+            const widget = {
+              getId: () => `remote.caret.widget.${safeId}`,
+              getDomNode: () => dom,
+              getPosition: () => ({ position: { lineNumber: u.cursor.lineNumber, column: Math.max(1, u.cursor.column) }, preference: [monaco.editor.ContentWidgetPositionPreference.ABOVE] }),
+            };
+            try { editor.addContentWidget(widget); } catch (e) {}
+            remoteWidgetsRef.current[u.socketId] = { widget, dom, className, getPosition: widget.getPosition };
+          }
+          keepWidgetIds.add(u.socketId);
+        } catch (e) {
+          // ignore widget errors
+        }
+      });
+
+      try {
+        // apply decorations (replace previous set)
+        const ids = editor.deltaDecorations(decorationsRef.current || [], decorations);
+        decorationsRef.current = ids;
       } catch (e) {
-        // monaco may not be in global scope — skip rendering when unavailable
+        // ignore
+      }
+
+      // remove widgets that are no longer present
+      for (const sid of Object.keys(remoteWidgetsRef.current)) {
+        if (!keepWidgetIds.has(sid)) {
+          try { editor.removeContentWidget(remoteWidgetsRef.current[sid].widget); } catch (e) {}
+          delete remoteWidgetsRef.current[sid];
+        }
       }
     };
 
@@ -230,6 +289,18 @@ function CodeEditor({ language, selectedFile }) {
       </div>
     </div>
   );
+}
+
+// simple hash -> color utility
+function getColorForString(s) {
+  let h = 0;
+  if (!s) s = Math.random().toString(36).slice(2);
+  for (let i = 0; i < s.length; i++) {
+    h = (h << 5) - h + s.charCodeAt(i);
+    h |= 0;
+  }
+  const hue = Math.abs(h) % 360;
+  return `hsl(${hue} 85% 45%)`;
 }
 
 export default CodeEditor;
