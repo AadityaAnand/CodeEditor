@@ -326,6 +326,20 @@ function App() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <ProjectSelector projects={projects} selectedProjectId={selectedProjectId} onSelect={handleSelectProject} onCreate={handleCreateProject} />
+            <button onClick={async () => {
+              try {
+                if (!selectedProjectId) return alert('Select a project first');
+                const res = await apiFetch(`/api/share/${selectedProjectId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: 'editor', ttlHours: 72 }) });
+                if (!res.ok) throw new Error('Failed to create share link');
+                const body = await res.json();
+                const url = `${API}/share/${body.token}`;
+                try { await navigator.clipboard.writeText(url); } catch (e) {}
+                alert(`Share link copied to clipboard:\n${url}`);
+              } catch (e) {
+                console.warn('Share failed', e.message);
+                alert('Failed to create share link');
+              }
+            }} style={{ padding: '8px 12px', background: '#28a745', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>Share</button>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={handleCreateFile} style={{ padding: '8px 12px', background: '#007ACC', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>+ New File</button>
               <button onClick={handleCreateFolder} style={{ padding: '8px 12px', background: '#007ACC', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>+ New Folder</button>
