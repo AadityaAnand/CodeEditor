@@ -3,6 +3,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const { User, Project, File } = require('./models');
+const Version = require('./models/Version');
 
 const app = express();
 const http = require('http');
@@ -143,6 +144,13 @@ io.on('connection', (socket) => {
       // update the file content (authoritative save)
       file.content = content;
       await file.save();
+
+      // create a version snapshot (best-effort)
+      try {
+        await Version.create({ fileId: file._id, projectId: file.projectId, content: file.content, language: file.language, userId: socket.user && socket.user.id });
+      } catch (e) {
+        console.warn('create version failed:', e.message);
+      }
 
       // broadcast updated file to the project room (don't echo back to sender)
       const room = String(file.projectId);
