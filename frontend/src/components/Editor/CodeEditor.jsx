@@ -1,6 +1,8 @@
 import { useRef, useState, useEffect } from 'react';
 import getSocket from '../../services/socket';
+import apiFetch from '../../services/api';
 import MonacoEditor from '@monaco-editor/react';
+import HistoryPanel from './HistoryPanel';
 
 // small debounce helper
 function debounce(fn, wait) {
@@ -122,6 +124,31 @@ function CodeEditor({ language, selectedFile }) {
   // presence: join/leave and display viewers for the selected file
   const [presenceUsers, setPresenceUsers] = useState([]);
   const currentFileRef = useRef(null);
+  const [showHistory, setShowHistory] = useState(false);
+  // handle a revert event from HistoryPanel: refresh file content
+  const handleHistoryRevert = async (file) => {
+    try {
+      // if backend returned file object, use it; otherwise fetch latest
+      let latest = file;
+      if (!latest || !latest._id) {
+        if (!selectedFile) return;
+        const res = await apiFetch(`/api/files/${selectedFile._id}`);
+        if (!res.ok) return;
+        latest = await res.json();
+      }
+      const content = latest.content || '';
+      setCode(content);
+      // update localStorage cache
+      try { localStorage.setItem('editorCode', content); } catch (e) {}
+      // update Monaco editor value directly if mounted (preserves undo stack differently)
+      const editor = editorRef.current;
+      if (editor) {
+        try { editor.setValue(content); } catch (e) {}
+      }
+    } catch (e) {
+      console.warn('refresh after revert failed', e.message || e);
+    }
+  };
   useEffect(() => {
     const socket = getSocket();
     const onPresenceUpdate = (users) => {
@@ -274,6 +301,7 @@ function CodeEditor({ language, selectedFile }) {
             ) : (
               <div style={{ color: '#ccc', fontSize: 12 }}>No viewers</div>
             )}
+            <button onClick={() => setShowHistory(true)} style={{ padding: '6px 10px' }}>History</button>
           </div>
         </div>
       )}
@@ -287,6 +315,11 @@ function CodeEditor({ language, selectedFile }) {
           theme='vs-dark'
         />
       </div>
+      {showHistory && selectedFile ? (
+        <div className="history-overlay">
+          <HistoryPanel fileId={selectedFile._id} onClose={() => setShowHistory(false)} onRevert={handleHistoryRevert} />
+        </div>
+      ) : null}
     </div>
   );
 }
