@@ -49,6 +49,7 @@ const fileRoutes = require('./routes/fileRoutes');
 console.log('✅ File routes loaded');
 const authRoutes = require('./routes/authRoutes');
 const projectRoutes = require('./routes/projectRoutes');
+const shareRoutes = require('./routes/shareRoutes');
 const socketAuth = require('./middleware/socketAuth');
 
 // create HTTP server and attach socket.io so we can emit events from controllers
@@ -143,9 +144,14 @@ io.on('connection', (socket) => {
       file.content = content;
       await file.save();
 
-      // broadcast updated file to the project room
+      // broadcast updated file to the project room (don't echo back to sender)
       const room = String(file.projectId);
-      io.to(room).emit('file:updated', file);
+      try {
+        socket.to(room).emit('file:updated', file);
+      } catch (e) {
+        // fallback
+        io.to(room).emit('file:updated', file);
+      }
     } catch (e) {
       console.warn('file:edit handler error:', e.message);
     }
@@ -222,6 +228,9 @@ app.get('/api/debug/files', async (req, res) => {
 });
 // project routes (protected inside)
 app.use('/api/projects', projectRoutes);
+
+// share routes
+app.use('/api/share', shareRoutes);
 
 // file routes (under /api/...)
 app.use('/api', fileRoutes);
