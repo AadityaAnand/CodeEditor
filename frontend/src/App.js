@@ -134,12 +134,72 @@ function App() {
             try { localStorage.setItem('selectedProjectId', String(list[0]._id)); } catch (e) {}
           }
         }
+        // if there is a pending share token (user visited /share/:token while logged out), try to join
+        try {
+          const pending = localStorage.getItem('pendingShareToken');
+          if (pending) {
+            const validate = await apiFetch(`/api/share/validate/${pending}`);
+            if (validate.ok) {
+              const body = await validate.json();
+              // attempt join
+              const jRes = await apiFetch(`/api/share/${body.projectId}/join`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: pending }) });
+              if (jRes.ok) {
+                localStorage.removeItem('pendingShareToken');
+                // reload projects
+                const p2 = await apiFetch('/api/projects');
+                if (p2.ok) {
+                  const list2 = await p2.json();
+                  setProjects(list2 || []);
+                }
+                alert('Joined project via share link');
+              }
+            }
+          }
+        } catch (e) { console.warn('pending share join failed', e.message); }
       } catch (e) {
         console.warn('Auth init failed', e.message);
       }
     };
 
     initAuth();
+  }, [authToken]);
+
+  // detect share token in URL (e.g. /share/<token>) and handle
+  useEffect(() => {
+    try {
+      const path = window.location.pathname || '';
+      if (path.startsWith('/share/')) {
+        const token = path.split('/share/')[1];
+        if (!token) return;
+        // if logged in, try to validate and join
+        (async () => {
+          try {
+            const v = await apiFetch(`/api/share/validate/${token}`);
+            if (!v.ok) {
+              alert('Invalid or expired share link');
+              return;
+            }
+            const info = await v.json();
+            if (!authToken) {
+              // store and prompt login
+              try { localStorage.setItem('pendingShareToken', token); } catch (e) {}
+              alert('Please login to join the shared project. After login we will complete the join.');
+            } else {
+              const jRes = await apiFetch(`/api/share/${info.projectId}/join`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) });
+              if (jRes.ok) {
+                alert('Successfully joined shared project');
+                // refresh projects
+                const p2 = await apiFetch('/api/projects');
+                if (p2.ok) setProjects(await p2.json());
+                window.history.replaceState({}, document.title, '/');
+              } else {
+                alert('Failed to join shared project');
+              }
+            }
+          } catch (e) { console.warn('share handling failed', e.message); }
+        })();
+      }
+    } catch (e) {}
   }, [authToken]);
 
   // project selection handlers
