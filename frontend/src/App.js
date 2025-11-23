@@ -5,6 +5,7 @@ import './App.css';
 import { useState, useEffect } from 'react';
 import { getSocket } from './services/socket';
 import apiFetch from './services/api';
+import showToast from './services/toast';
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
 import ProjectSelector from './components/ProjectSelector';
@@ -143,7 +144,7 @@ function App() {
               const body = await validate.json();
               // attempt join
               const jRes = await apiFetch(`/api/share/${body.projectId}/join`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: pending }) });
-              if (jRes.ok) {
+                if (jRes.ok) {
                 localStorage.removeItem('pendingShareToken');
                 // reload projects
                 const p2 = await apiFetch('/api/projects');
@@ -151,7 +152,7 @@ function App() {
                   const list2 = await p2.json();
                   setProjects(list2 || []);
                 }
-                alert('Joined project via share link');
+                showToast('Joined project via share link', { type: 'success' });
               }
             }
           }
@@ -176,24 +177,24 @@ function App() {
           try {
             const v = await apiFetch(`/api/share/validate/${token}`);
             if (!v.ok) {
-              alert('Invalid or expired share link');
+              showToast('Invalid or expired share link', { type: 'error' });
               return;
             }
             const info = await v.json();
             if (!authToken) {
               // store and prompt login
               try { localStorage.setItem('pendingShareToken', token); } catch (e) {}
-              alert('Please login to join the shared project. After login we will complete the join.');
+              showToast('Please login to join the shared project. After login we will complete the join.', { type: 'info' });
             } else {
               const jRes = await apiFetch(`/api/share/${info.projectId}/join`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) });
               if (jRes.ok) {
-                alert('Successfully joined shared project');
+                showToast('Successfully joined shared project', { type: 'success' });
                 // refresh projects
                 const p2 = await apiFetch('/api/projects');
                 if (p2.ok) setProjects(await p2.json());
                 window.history.replaceState({}, document.title, '/');
               } else {
-                alert('Failed to join shared project');
+                showToast('Failed to join shared project', { type: 'error' });
               }
             }
           } catch (e) { console.warn('share handling failed', e.message); }
@@ -279,7 +280,7 @@ function App() {
       });
     } catch (error) {
       console.error('Error creating file:', error);
-      alert('Failed to save file to backend');
+      showToast('Failed to save file to backend', { type: 'error' });
     }
   };
 
@@ -315,7 +316,7 @@ function App() {
       });
     } catch (error) {
       console.error('Error creating folder:', error);
-      alert('Failed to save folder to backend');
+      showToast('Failed to save folder to backend', { type: 'error' });
     }
   };
 
@@ -340,7 +341,7 @@ function App() {
       console.log('✅ File deleted');
     } catch (error) {
       console.error('Error deleting file:', error);
-      alert('Failed to delete file from backend');
+      showToast('Failed to delete file from backend', { type: 'error' });
     }
   };
 
@@ -373,7 +374,7 @@ function App() {
       console.log('✅ File renamed:', updatedFile);
     } catch (error) {
       console.error('Error renaming file:', error);
-      alert('Failed to rename file in backend');
+      showToast('Failed to rename file in backend', { type: 'error' });
     }
   };
 
@@ -388,16 +389,16 @@ function App() {
             <ProjectSelector projects={projects} selectedProjectId={selectedProjectId} onSelect={handleSelectProject} onCreate={handleCreateProject} />
             <button onClick={async () => {
               try {
-                if (!selectedProjectId) return alert('Select a project first');
+                if (!selectedProjectId) return showToast('Select a project first', { type: 'info' });
                 const res = await apiFetch(`/api/share/${selectedProjectId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: 'editor', ttlHours: 72 }) });
                 if (!res.ok) throw new Error('Failed to create share link');
                 const body = await res.json();
                 const url = `${API}/share/${body.token}`;
                 try { await navigator.clipboard.writeText(url); } catch (e) {}
-                alert(`Share link copied to clipboard:\n${url}`);
+                showToast(`Share link copied to clipboard: ${url}`, { type: 'info', timeout: 6000 });
               } catch (e) {
                 console.warn('Share failed', e.message);
-                alert('Failed to create share link');
+                showToast('Failed to create share link', { type: 'error' });
               }
             }} style={{ padding: '8px 12px', background: '#28a745', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>Share</button>
             <div style={{ display: 'flex', gap: 8 }}>
