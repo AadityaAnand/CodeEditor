@@ -1,11 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import apiFetch from '../../services/api';
 
+function ConfirmModal({ title, message, onConfirm, onCancel, busy }) {
+  return (
+    <div className="modal-backdrop">
+      <div className="modal" role="dialog" aria-modal="true">
+        <h4>{title}</h4>
+        <div style={{ marginTop: 8 }}>{message}</div>
+        <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button onClick={onCancel} disabled={busy}>Cancel</button>
+          <button onClick={onConfirm} disabled={busy}>{busy ? 'Working…' : 'Confirm'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function HistoryPanel({ fileId, onClose, onRevert }) {
   const [versions, setVersions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [reverting, setReverting] = useState(false);
+  const [confirmVersion, setConfirmVersion] = useState(null);
 
   useEffect(() => {
     if (!fileId) return;
@@ -25,9 +41,8 @@ export default function HistoryPanel({ fileId, onClose, onRevert }) {
     })();
   }, [fileId]);
 
-  const handleRevert = async (versionId) => {
-  if (!fileId || !versionId) return;
-  if (!window.confirm('Revert to this version? This will create a new snapshot of the current content.')) return;
+  const doRevert = async (versionId) => {
+    if (!fileId || !versionId) return;
     try {
       setReverting(true);
       const res = await apiFetch(`/api/files/${fileId}/revert`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ versionId }) });
@@ -36,14 +51,14 @@ export default function HistoryPanel({ fileId, onClose, onRevert }) {
         throw new Error(err || 'Failed to revert');
       }
       const data = await res.json();
-      alert('Reverted successfully');
-      // inform parent to refresh file content
+      // notify parent to refresh content
       if (onRevert) {
-        try { onRevert(data.file); } catch (e) {}
+        try { onRevert(data.file); } catch (e) { console.warn(e); }
       }
+      setConfirmVersion(null);
       onClose && onClose();
     } catch (e) {
-      alert('Revert failed: ' + (e.message || 'unknown'));
+      setError(e.message || 'Revert failed');
     } finally {
       setReverting(false);
     }
@@ -68,7 +83,7 @@ export default function HistoryPanel({ fileId, onClose, onRevert }) {
                   <div style={{ fontSize: 13 }}>{(v.userId && (v.userId.name || v.userId.email)) || (v.userId ? String(v.userId) : 'Unknown')}</div>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => handleRevert(v._id)} disabled={reverting}>Revert</button>
+                  <button onClick={() => setConfirmVersion(v._id)} disabled={reverting}>Revert</button>
                 </div>
               </div>
               <pre className="history-preview">{(v.content || '').slice(0, 400)}</pre>
@@ -76,6 +91,16 @@ export default function HistoryPanel({ fileId, onClose, onRevert }) {
           ))}
         </div>
       )}
+
+      {confirmVersion ? (
+        <ConfirmModal
+          title="Confirm revert"
+          message="Revert to this version? This will create a new snapshot of the current content."
+          busy={reverting}
+          onCancel={() => setConfirmVersion(null)}
+          onConfirm={() => doRevert(confirmVersion)}
+        />
+      ) : null}
     </div>
   );
 }
