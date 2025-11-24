@@ -4,27 +4,62 @@ Local development notes and quick start
 
 Requirements
 - Node.js 18+ and npm
-- MongoDB running locally or a MongoDB connection URI
+- MongoDB running locally or a MongoDB connection URI (for production/staging). Tests use an in-memory MongoDB.
 
-Environment
-- Backend reads env vars from `.env` (optional):
-  - MONGODB_URI (default: mongodb://localhost:27017/collaborative-editor)
-  - PORT (default: 5050)
-  - JWT_SECRET (default: change in production)
+Quick start (macOS / zsh)
 
-Start backend
+1) Install dependencies
+
+```bash
+# at repo root
+npm install
+# frontend deps
+cd frontend && npm install && cd ..
+# backend deps
+cd backend && npm install && cd ..
+```
+
+2) Copy example env and set values for your environment
+
+```bash
+# from repo root
+cp env.example backend/.env
+# edit backend/.env and fill JWT_SECRET, MONGODB_URI, etc.
+```
+
+3) Start backend (development)
+
 ```bash
 cd backend
-npm install
-PORT=5050 MONGODB_URI="mongodb://localhost:27017/collaborative-editor" npm start
+# recommended: use nodemon or the provided dev script
+npm run dev
 ```
 
-Start frontend
+By default the backend listens on PORT=5050 (unless overridden in your .env).
+
+4) Start frontend (development)
+
 ```bash
 cd frontend
-npm install
 npm start
 ```
+
+5) Run backend tests (uses in-memory MongoDB so no external DB required)
+
+```bash
+cd backend
+npm test -- --runInBand
+```
+
+Environment (example)
+- See `env.example` at the repository root. Typical variables:
+  - JWT_SECRET - secret used to sign JWT tokens
+  - MONGODB_URI - MongoDB connection string
+  - CLIENT_ORIGIN - allowed frontend origin (e.g. http://localhost:3000)
+  - PORT - backend port (default 5050)
+  - REDIS_URL - optional (for presence adapter)
+  - SMTP_* - optional for email invites
+  - SENTRY_DSN - optional error reporting
 
 Features implemented
 - JWT auth (register/login)
@@ -36,5 +71,11 @@ Features implemented
 - File versioning/history with revert support
 
 Notes
-- Presence and versioning are in-memory / basic persistence respectively. For production scale, move presence to Redis and add CRDT-based merging (Yjs) for robust concurrent edits.
+- Presence is currently in-memory. For production scale, move presence to Redis and enable the socket.io Redis adapter.
+- Versioning snapshots are stored in Mongo; add retention/TTL for long-term data management.
+
+Next recommended tasks
+- Add a CI workflow to run linting, backend tests, and the frontend build on each push.
+- Add `/health` and `/ready` endpoints and graceful shutdown handling in the backend.
+
 # CodeEditor

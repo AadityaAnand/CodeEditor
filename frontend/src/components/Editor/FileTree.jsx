@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import TreeItem from './TreeItem';
 import './FileTree.css';
 
 function FileTree({ files, onSelectFile, onDeleteFile, onRenameFile, projectId }) {
-  const [loading, setLoading] = useState(false);
+  // keep a simple loading flag for future use; avoid unused setter lint warnings
+  const loading = false;
 
   useEffect(() => {
+    // placeholder effect in case projectId changes we may fetch folder contents later
   }, [projectId]);
 
   const rootItems = files.filter((file) => file.parentFolderId === null);

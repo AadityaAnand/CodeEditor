@@ -2,10 +2,24 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const helmet = require('helmet');
 const { User, Project, File } = require('./models');
 const Version = require('./models/Version');
 
 const app = express();
+const logger = require('./logger');
+const pinoHttp = require('pino-http');
+const Sentry = require('@sentry/node');
+
+// Initialize Sentry if configured (optional)
+if (process.env.SENTRY_DSN) {
+  Sentry.init({ dsn: process.env.SENTRY_DSN });
+  // request handler must be first middleware when using Sentry
+  app.use(Sentry.Handlers.requestHandler());
+}
+
+// attach pino-http for request logging
+app.use(pinoHttp({ logger }));
 const http = require('http');
 const { Server } = require('socket.io');
 
@@ -16,6 +30,9 @@ const corsOptions = {
   // allow common headers used by browsers and fetch requests
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
 };
+
+// enable security headers
+app.use(helmet());
 
 // enable CORS using the configured options and make sure preflight requests are handled
 app.use(cors(corsOptions));
@@ -43,11 +60,11 @@ app.use((req, res, next) => {
 app.use(express.json());
 
 mongoose.connect(process.env.MONGODB_URI)
-.then(() => console.log('✅ MongoDB connected'))
-.catch((err) => console.log('❌ MongoDB connection error:', err));
+.then(() => logger.info('✅ MongoDB connected'))
+.catch((err) => logger.error({ err }, '❌ MongoDB connection error'));
 
 const fileRoutes = require('./routes/fileRoutes');
-console.log('✅ File routes loaded');
+logger.info('✅ File routes loaded');
 const authRoutes = require('./routes/authRoutes');
 const projectRoutes = require('./routes/projectRoutes');
 const shareRoutes = require('./routes/shareRoutes');
@@ -86,9 +103,9 @@ function emitPresenceUpdate(fileId) {
 io.use((socket, next) => socketAuth(socket, next));
 
 io.on('connection', (socket) => {
-  console.log('🔌 socket connected:', socket.id);
+  logger.info({ socketId: socket.id }, '🔌 socket connected');
   socket.on('disconnect', () => {
-    console.log('🔌 socket disconnected:', socket.id);
+  logger.info({ socketId: socket.id }, '🔌 socket disconnected');
     // remove socket from any presence lists it was part of
     try {
       for (const [fileId, map] of presenceMap.entries()) {
@@ -107,7 +124,7 @@ io.on('connection', (socket) => {
   // join a project room so events can be scoped to a project
   socket.on('join-project', async (projectId) => {
     try {
-      if (!projectId) return;
+  if (!projectId) return;
       const project = await Project.findById(projectId);
       if (!project) return console.warn('join-project: project not found', projectId);
 
@@ -116,13 +133,13 @@ io.on('connection', (socket) => {
       const isCollaborator = project.collaborators && project.collaborators.some((c) => String(c.userId) === String(userId));
 
       if (isOwner || isCollaborator) {
-        socket.join(projectId);
-        console.log(`🔌 socket ${socket.id} joined project ${projectId}`);
+  socket.join(projectId);
+  logger.info({ socketId: socket.id, projectId }, `🔌 socket ${socket.id} joined project ${projectId}`);
       } else {
-        console.warn(`🔒 socket ${socket.id} attempted to join project ${projectId} without access`);
+  logger.warn({ socketId: socket.id, projectId }, `🔒 socket attempted to join project without access`);
       }
-    } catch (e) {
-      console.warn('join-project handler error:', e.message);
+      } catch (e) {
+      logger.warn({ err: e }, 'join-project handler error');
     }
   });
 
@@ -161,7 +178,7 @@ io.on('connection', (socket) => {
         io.to(room).emit('file:updated', file);
       }
     } catch (e) {
-      console.warn('file:edit handler error:', e.message);
+      logger.warn({ err: e }, 'file:edit handler error');
     }
   });
 
@@ -180,7 +197,7 @@ io.on('connection', (socket) => {
       socket.join(`presence:${fileId}`);
       emitPresenceUpdate(fileId);
     } catch (e) {
-      console.warn('presence:join error:', e.message);
+      logger.warn({ err: e }, 'presence:join error');
     }
   });
 
@@ -195,7 +212,7 @@ io.on('connection', (socket) => {
         emitPresenceUpdate(fileId);
       }
     } catch (e) {
-      console.warn('presence:leave error:', e.message);
+      logger.warn({ err: e }, 'presence:leave error');
     }
   });
 
@@ -211,7 +228,7 @@ io.on('connection', (socket) => {
       map.set(socket.id, entry);
       emitPresenceUpdate(fileId);
     } catch (e) {
-      console.warn('presence:cursor error:', e.message);
+      logger.warn({ err: e }, 'presence:cursor error');
     }
   });
 });
@@ -221,6 +238,22 @@ global.io = io;
 
 app.get('/api/test', (req, res) => {
   res.json({ message: 'Backend is running!' });
+});
+
+// health and readiness endpoints
+app.get('/health', (req, res) => {
+  // basic liveness probe
+  res.status(200).json({ status: 'ok' });
+});
+
+app.get('/ready', (req, res) => {
+  // readiness: ensure MongoDB is connected
+  const readyStates = [1]; // mongoose.ConnectionStates.connected === 1
+  const state = mongoose.connection.readyState;
+  if (readyStates.includes(state)) {
+    return res.status(200).json({ ready: true });
+  }
+  return res.status(503).json({ ready: false, state });
 });
 
 // authentication routes
@@ -254,3 +287,50 @@ if (require.main === module) {
 
 // export app/server for tests
 module.exports = { app, server };
+
+// Graceful shutdown handling so the process can terminate cleanly
+async function gracefulShutdown(signal) {
+  try {
+    console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
+    // stop accepting new connections
+    if (server && server.close) {
+      await new Promise((resolve) => server.close(() => resolve()));
+      console.log('HTTP server closed');
+    }
+
+    // close socket.io
+    try {
+      if (global.io && global.io.close) {
+        await global.io.close();
+        console.log('Socket.io closed');
+      }
+    } catch (e) {
+      console.warn('Error closing socket.io:', e && e.message);
+    }
+
+    // disconnect mongoose
+    try {
+      await mongoose.disconnect();
+      console.log('Mongoose disconnected');
+    } catch (e) {
+      console.warn('Error disconnecting mongoose:', e && e.message);
+    }
+
+    console.log('Shutdown complete. Exiting.');
+    process.exit(0);
+  } catch (err) {
+    console.error('Graceful shutdown failed:', err);
+    process.exit(1);
+  }
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception, shutting down:', err);
+  gracefulShutdown('uncaughtException');
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection, shutting down:', reason);
+  gracefulShutdown('unhandledRejection');
+});

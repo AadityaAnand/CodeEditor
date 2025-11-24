@@ -5,15 +5,42 @@
 }
 
 .header {
-  background-color: #1e1e1e;
+  background-color: #0f1724;
   color: #fff;
-  padding: 20px;
-  border-bottom: 1px solid #3e3e42;
+  padding: 18px 28px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .header h1 {
   margin: 0;
-  font-size: 18px;
+  font-size: 20px;
+  letter-spacing: -0.2px;
+  font-weight: 600;
+}
+
+.header .tagline {
+  margin-top: 4px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.72);
+}
+
+.header .controls button {
+  background: #0ea5ff;
+  color: #06202a;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.header .controls .secondary {
+  background: transparent;
+  color: rgba(255,255,255,0.9);
+  border: 1px solid rgba(255,255,255,0.06);
 }
 
 

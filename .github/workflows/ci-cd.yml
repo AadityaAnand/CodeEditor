@@ -1,0 +1,105 @@
+name: CI and Deploy
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install backend deps
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Run backend tests
+        working-directory: ./backend
+        env:
+          CI: true
+        run: npm test --silent -- --runInBand
+
+      - name: Install frontend deps
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: ./frontend
+        env:
+          CI: true
+        run: npm run build --if-present
+
+      - name: Archive frontend build
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/build || ''
+
+      - name: Deploy backend to Render (optional)
+        if: ${{ secrets.RENDER_API_KEY && secrets.RENDER_SERVICE_ID }}
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+        run: |
+          echo "Triggering Render deploy for service $RENDER_SERVICE_ID"
+          resp=$(curl -s -X POST https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys \
+            -H "Authorization: Bearer ${RENDER_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache": true}')
+          echo "Render response: $resp"
+
+      - name: Deploy frontend to Vercel (optional)
+        if: ${{ secrets.VERCEL_TOKEN }}
+        uses: amondnet/vercel-action@v20
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-args: '--prod'
+          working-directory: ./frontend
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID || '' }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID || '' }}
+
+      - name: Run post-deploy smoke tests (optional)
+        if: ${{ secrets.PROD_BACKEND_URL }}
+        env:
+          BACKEND_URL: ${{ secrets.PROD_BACKEND_URL }}
+        run: |
+          echo "Running smoke tests against $BACKEND_URL"
+          # capture exit code and logs so we can report back
+          npm ci
+          set +e
+          npm run smoke > smoke.log 2>&1
+          echo "SMOKE_EXIT_CODE=$?" >> $GITHUB_ENV
+          set -e
+
+      - name: Post smoke result to PR (if present)
+        if: ${{ secrets.PROD_BACKEND_URL }}
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.existsSync('smoke.log') ? fs.readFileSync('smoke.log','utf8').slice(0,65000) : '[no logs]';
+            const passed = process.env.SMOKE_EXIT_CODE === '0';
+            const comment = passed ? `✅ Smoke tests passed.\n\n\
+\`\`\`\n${body}\n\`\`\`` : `❌ Smoke tests failed (exit ${process.env.SMOKE_EXIT_CODE}). Logs below:\n\n\`\`\`\n${body}\n\`\`\``;
+            if (github.context.payload.pull_request) {
+              await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: github.context.payload.pull_request.number, body: comment });
+            } else {
+              core.info('No pull_request context — skipping PR comment.');
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

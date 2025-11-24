@@ -1,0 +1,15 @@
+.hero {
+  background: linear-gradient(90deg, rgba(6,30,40,0.9), rgba(11,37,56,0.95));
+  color: #fff;
+  padding: 28px 32px;
+}
+.hero-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.hero-text h2 { margin: 0 0 6px 0; font-size: 20px; }
+.hero-text p { margin: 0; color: rgba(255,255,255,0.85); }
+.hero-cta .btn { display: inline-block; padding: 10px 14px; border-radius: 8px; text-decoration: none; font-weight: 700; }
+.btn.primary { background: #06b6d4; color: #06202a; }

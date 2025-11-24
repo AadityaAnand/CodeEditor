@@ -1,0 +1,48 @@
+version: '3.8'
+services:
+  mongo:
+    image: mongo:6.0
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    ports:
+      - "27017:27017"
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      - PORT=5050
+      - MONGODB_URI=mongodb://mongo:27017/codeeditor
+      - REDIS_URL=redis://redis:6379
+      - NODE_ENV=development
+    ports:
+      - "5050:5050"
+    depends_on:
+      - mongo
+      - redis
+    networks:
+      - appnet
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - appnet
+
+volumes:
+  mongo-data:
+
+networks:
+  appnet:
+    driver: bridge

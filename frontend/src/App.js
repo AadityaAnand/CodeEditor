@@ -2,6 +2,7 @@ import CodeEditor from './components/Editor/CodeEditor';
 import FileTree from './components/Editor/FileTree';
 import LanguageSelector from './components/Editor/LanguageSelector';
 import './App.css';
+import Hero from './components/Hero';
 import { useState, useEffect } from 'react';
 import { getSocket } from './services/socket';
 import apiFetch from './services/api';
@@ -163,7 +164,7 @@ function App() {
     };
 
     initAuth();
-  }, [authToken]);
+  }, [authToken, selectedProjectId]);
 
   // detect share token in URL (e.g. /share/<token>) and handle
   useEffect(() => {
@@ -380,11 +381,12 @@ function App() {
 
   return (
     <div className="App">
-      <header className="header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <header className="header">
         <div>
-          <h1>Collaborative Code Editor</h1>
+          <h1>CodeEditor</h1>
+          <div className="tagline">Realtime collaborative editor — presence, history, and sharing</div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div className="controls" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <ProjectSelector projects={projects} selectedProjectId={selectedProjectId} onSelect={handleSelectProject} onCreate={handleCreateProject} />
             <button onClick={async () => {
@@ -402,8 +404,8 @@ function App() {
               }
             }} style={{ padding: '8px 12px', background: '#28a745', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>Share</button>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={handleCreateFile} style={{ padding: '8px 12px', background: '#007ACC', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>+ New File</button>
-              <button onClick={handleCreateFolder} style={{ padding: '8px 12px', background: '#007ACC', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>+ New Folder</button>
+              <button onClick={handleCreateFile} className="secondary" style={{ padding: '8px 12px', background: '#007ACC', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>+ New File</button>
+              <button onClick={handleCreateFolder} className="secondary" style={{ padding: '8px 12px', background: '#007ACC', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>+ New Folder</button>
             </div>
           </div>
           <div>
@@ -414,8 +416,8 @@ function App() {
               </div>
             ) : (
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => setShowLogin(true)} style={{ padding: '6px 10px' }}>Login</button>
-                <button onClick={() => setShowRegister(true)} style={{ padding: '6px 10px' }}>Register</button>
+                <button onClick={() => setShowLogin(true)} className="secondary" style={{ padding: '6px 10px' }}>Login</button>
+                <button onClick={() => setShowRegister(true)} className="secondary" style={{ padding: '6px 10px' }}>Register</button>
               </div>
             )}
           </div>
@@ -423,6 +425,8 @@ function App() {
       </header>
       {showLogin && <Login apiBase={API} onSuccess={handleAuthSuccess} onCancel={() => setShowLogin(false)} />}
       {showRegister && <Register apiBase={API} onSuccess={handleAuthSuccess} onCancel={() => setShowRegister(false)} />}
+
+      <Hero />
 
       <LanguageSelector
         language={language}

@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/authMiddleware');
 const projectController = require('../controllers/projectController');
+const { validateBody } = require('../middleware/validate');
+const { createProjectSchema } = require('../validators/project');
 
 router.use(auth);
 
@@ -9,7 +11,7 @@ router.use(auth);
 router.get('/', projectController.getMyProjects);
 
 // create a new project
-router.post('/', projectController.createProject);
+router.post('/', validateBody(createProjectSchema), projectController.createProject);
 
 // get single project
 router.get('/:projectId', projectController.getProject);

@@ -1,0 +1,17 @@
+# Render service configuration for backend
+# See: https://render.com/docs/deploy-yaml
+
+services:
+  - type: web
+    name: code-editor-backend
+    env: node
+    region: oregon
+    branch: main
+    plan: free
+    buildCommand: "cd backend && npm ci"
+    startCommand: "node backend/server.js"
+    envVars:
+      - key: MONGODB_URI
+      - key: JWT_SECRET
+      - key: CLIENT_ORIGIN
+      - key: PORT
