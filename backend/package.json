@@ -29,6 +29,7 @@
   }
   ,
   "jest": {
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "testPathIgnorePatterns": ["<rootDir>/test.js", "<rootDir>/scripts/", "<rootDir>/node_modules/"]
   }
 }

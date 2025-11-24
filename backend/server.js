@@ -243,11 +243,14 @@ app.use('/api/share', shareRoutes);
 // file routes (under /api/...)
 app.use('/api', fileRoutes);
 
+// Start server only when this file is run directly (prevents tests from trying to listen multiple times)
 // default to 5050 locally to avoid clashes with OS services
 const PORT = process.env.PORT || 5050;
-server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+if (require.main === module) {
+  server.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+  });
+}
 
 // export app/server for tests
 module.exports = { app, server };
