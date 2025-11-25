@@ -13,7 +13,7 @@ function debounce(fn, wait) {
   };
 }
 
-function CodeEditor({ language, selectedFile }) {
+function CodeEditor({ language, selectedFile, readOnly }) {
   const editorRef = useRef(null);
   const [code, setCode] = useState('');
   useEffect(() => {
@@ -313,6 +313,7 @@ function CodeEditor({ language, selectedFile }) {
           onChange={handleEditorChange}
           onMount={handleEditorDidMount}
           theme='vs-dark'
+          options={{ readOnly: !!readOnly }}
         />
       </div>
       {showHistory && selectedFile ? (

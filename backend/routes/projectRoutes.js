@@ -15,5 +15,7 @@ router.post('/', validateBody(createProjectSchema), projectController.createProj
 
 // get single project
 router.get('/:projectId', projectController.getProject);
+router.get('/:projectId/collaborators', projectController.listCollaborators);
+router.post('/:projectId/invite', projectController.inviteCollaborator);
 
 module.exports = router;

@@ -2,14 +2,16 @@ import CodeEditor from './components/Editor/CodeEditor';
 import FileTree from './components/Editor/FileTree';
 import LanguageSelector from './components/Editor/LanguageSelector';
 import './App.css';
-import Hero from './components/Hero';
 import { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { getSocket } from './services/socket';
 import apiFetch from './services/api';
 import showToast from './services/toast';
-import Login from './components/Auth/Login';
-import Register from './components/Auth/Register';
 import ProjectSelector from './components/ProjectSelector';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import JoinProjectPage from './pages/JoinProjectPage';
+import ShareModal from './components/ShareModal';
 
 function App() {
   const [language, setLanguage] = useState('javascript');
@@ -19,15 +21,13 @@ function App() {
   const [selectedProjectId, setSelectedProjectId] = useState(() => {
     try { return localStorage.getItem('selectedProjectId'); } catch (e) { return null; }
   });
-    const [authToken, setAuthToken] = useState(() => localStorage.getItem('token'));
-    const [authUser, setAuthUser] = useState(() => {
-      try {
-        const raw = localStorage.getItem('user');
-        return raw ? JSON.parse(raw) : null;
-      } catch (e) { return null; }
-    });
-    const [showLogin, setShowLogin] = useState(false);
-    const [showRegister, setShowRegister] = useState(false);
+  const [authToken, setAuthToken] = useState(() => localStorage.getItem('token'));
+  const [authUser, setAuthUser] = useState(() => {
+    try {
+      const raw = localStorage.getItem('user');
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  });
   
   const [files, setFiles] = useState([
     {
@@ -61,6 +61,35 @@ function App() {
       content: '# My Project\n\nThis is a test project.',
     },
   ]);
+
+  // collaboration / sharing state
+  const [projectPresence, setProjectPresence] = useState([]);
+  const [currentProjectRole, setCurrentProjectRole] = useState(null);
+  const [showShare, setShowShare] = useState(false);
+
+  // load collaborators & derive current role when project or auth changes
+  useEffect(() => {
+    (async () => {
+      if (!authToken || !selectedProjectId) { setCurrentProjectRole(null); return; }
+      try {
+        const res = await apiFetch(`/api/projects/${selectedProjectId}/collaborators`);
+        if (!res.ok) return;
+        const list = await res.json();
+        const userId = authUser && (authUser._id || authUser.id);
+        const mine = list.find(c => String(c.userId) === String(userId));
+        setCurrentProjectRole(mine ? mine.role : null);
+      } catch (e) { /* ignore */ }
+    })();
+  }, [selectedProjectId, authToken, authUser]);
+
+  // listen for project presence broadcasts
+  useEffect(() => {
+    const socket = getSocket(authToken);
+    if (!socket) return;
+    const handler = (list) => setProjectPresence(list || []);
+    socket.on('project:presence', handler);
+    return () => { socket.off('project:presence', handler); };
+  }, [authToken]);
 
   // socket.io: connect and listen for file events to keep UI in sync
   useEffect(() => {
@@ -234,8 +263,8 @@ function App() {
     setAuthToken(token);
     setAuthUser(user);
     try { localStorage.setItem('token', token); localStorage.setItem('user', JSON.stringify(user)); } catch (e) {}
-    setShowLogin(false);
-    setShowRegister(false);
+    // redirect to home after auth
+    window.location.href = '/';
   };
 
   const handleLogout = () => {
@@ -380,72 +409,61 @@ function App() {
   };
 
   return (
-    <div className="App">
-      <header className="header">
-        <div>
-          <h1>CodeEditor</h1>
-          <div className="tagline">Realtime collaborative editor — presence, history, and sharing</div>
-        </div>
-        <div className="controls" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <ProjectSelector projects={projects} selectedProjectId={selectedProjectId} onSelect={handleSelectProject} onCreate={handleCreateProject} />
-            <button onClick={async () => {
-              try {
-                if (!selectedProjectId) return showToast('Select a project first', { type: 'info' });
-                const res = await apiFetch(`/api/share/${selectedProjectId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: 'editor', ttlHours: 72 }) });
-                if (!res.ok) throw new Error('Failed to create share link');
-                const body = await res.json();
-                const url = `${API}/share/${body.token}`;
-                try { await navigator.clipboard.writeText(url); } catch (e) {}
-                showToast(`Share link copied to clipboard: ${url}`, { type: 'info', timeout: 6000 });
-              } catch (e) {
-                console.warn('Share failed', e.message);
-                showToast('Failed to create share link', { type: 'error' });
-              }
-            }} style={{ padding: '8px 12px', background: '#28a745', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>Share</button>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={handleCreateFile} className="secondary" style={{ padding: '8px 12px', background: '#007ACC', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>+ New File</button>
-              <button onClick={handleCreateFolder} className="secondary" style={{ padding: '8px 12px', background: '#007ACC', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>+ New Folder</button>
-            </div>
-          </div>
+    <Router>
+      <div className="App">
+        <header className="header">
           <div>
-            {authUser ? (
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <span>Hi, {authUser.name || authUser.email}</span>
-                <button onClick={handleLogout} style={{ padding: '6px 10px' }}>Logout</button>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => setShowLogin(true)} className="secondary" style={{ padding: '6px 10px' }}>Login</button>
-                <button onClick={() => setShowRegister(true)} className="secondary" style={{ padding: '6px 10px' }}>Register</button>
-              </div>
-            )}
+            <h1>CodeEditor</h1>
+            <div className="tagline">Realtime collaborative editor — presence, history, sharing & history</div>
           </div>
-        </div>
-      </header>
-      {showLogin && <Login apiBase={API} onSuccess={handleAuthSuccess} onCancel={() => setShowLogin(false)} />}
-      {showRegister && <Register apiBase={API} onSuccess={handleAuthSuccess} onCancel={() => setShowRegister(false)} />}
-
-      <Hero />
-
-      <LanguageSelector
-        language={language}
-        onLanguageChange={setLanguage}
-      />
-      <div style={{ display: 'flex', height: '90vh' }}>
-        <FileTree 
-          files={files}
-          onSelectFile={handleSelectFile}
-          onDeleteFile={handleDeleteFile}
-          onRenameFile={handleRenameFile}
-          projectId={selectedProjectId}
-        />
-        <CodeEditor 
-          language={language}
-          selectedFile={selectedFile}
-        />
+          <nav className="nav-links">
+            <Link to="/" className="nav-link">Workspace</Link>
+            <Link to="/join" className="nav-link">Join</Link>
+            {!authUser && <Link to="/login" className="nav-link">Login</Link>}
+            {!authUser && <Link to="/register" className="nav-link">Register</Link>}
+            {authUser && <button onClick={handleLogout} className="nav-link btn-inline">Logout</button>}
+          </nav>
+        </header>
+        <Routes>
+          <Route path="/login" element={<LoginPage apiBase={API} onAuth={handleAuthSuccess} />} />
+          <Route path="/register" element={<RegisterPage apiBase={API} onAuth={handleAuthSuccess} />} />
+          <Route path="/join" element={<JoinProjectPage apiBase={API} authToken={authToken} />} />
+          <Route path="/" element={(
+            <div className="editor-shell">
+              <div className="top-bar">
+                <div className="project-bar">
+                  <ProjectSelector projects={projects} selectedProjectId={selectedProjectId} onSelect={handleSelectProject} onCreate={handleCreateProject} />
+                  <div className="project-actions">
+                    <button onClick={() => setShowShare(true)} className="primary-btn">Share</button>
+                    <button onClick={handleCreateFile} className="secondary-btn" disabled={currentProjectRole === 'viewer'}>+ File</button>
+                    <button onClick={handleCreateFolder} className="secondary-btn" disabled={currentProjectRole === 'viewer'}>+ Folder</button>
+                  </div>
+                </div>
+                <LanguageSelector language={language} onLanguageChange={setLanguage} />
+              </div>
+              <div className="workspace">
+                <FileTree
+                  files={files}
+                  onSelectFile={handleSelectFile}
+                  onDeleteFile={handleDeleteFile}
+                  onRenameFile={handleRenameFile}
+                  projectId={selectedProjectId}
+                />
+                <CodeEditor language={language} selectedFile={selectedFile} readOnly={currentProjectRole === 'viewer'} />
+              </div>
+            </div>
+          )} />
+        </Routes>
+        {showShare && (
+          <ShareModal
+            apiBase={API}
+            projectId={selectedProjectId}
+            onClose={() => setShowShare(false)}
+            currentRole={currentProjectRole}
+          />
+        )}
       </div>
-    </div>
+    </Router>
   );
 }
 

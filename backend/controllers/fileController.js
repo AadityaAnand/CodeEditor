@@ -2,13 +2,13 @@ const mongoose = require('mongoose');
 const { File, Project } = require('../models');
 const Version = require('../models/Version');
 
-async function userHasProjectAccess(projectId, userId) {
-  if (!userId) return false;
+async function userRoleForProject(projectId, userId) {
+  if (!userId) return null;
   const project = await Project.findById(projectId);
-  if (!project) return false;
-  if (String(project.owner) === String(userId)) return true;
-  if (project.collaborators && project.collaborators.some((c) => String(c.userId) === String(userId))) return true;
-  return false;
+  if (!project) return null;
+  if (String(project.owner) === String(userId)) return 'owner';
+  const collab = project.collaborators && project.collaborators.find((c) => String(c.userId) === String(userId));
+  return collab ? collab.role : null;
 }
 
 exports.createFile = async (req, res) => {
@@ -32,8 +32,9 @@ exports.createFile = async (req, res) => {
 
     // ensure the requester has access to this project
     if (!req.user || !req.user.id) return res.status(401).json({ error: 'Unauthorized' });
-    const hasAccess = await userHasProjectAccess(projectObjectId, req.user.id);
-    if (!hasAccess) return res.status(403).json({ error: 'Forbidden' });
+    const role = await userRoleForProject(projectObjectId, req.user.id);
+    if (!role) return res.status(403).json({ error: 'Forbidden' });
+    if (role === 'viewer') return res.status(403).json({ error: 'Read-only access' });
 
     const newFile = new File({
       name,
@@ -66,8 +67,8 @@ exports.getProjectTree = async (req, res) => {
     const { projectId } = req.params;
     const objectId = new mongoose.Types.ObjectId(projectId);
     if (!req.user || !req.user.id) return res.status(401).json({ error: 'Unauthorized' });
-    const hasAccess = await userHasProjectAccess(objectId, req.user.id);
-    if (!hasAccess) return res.status(403).json({ error: 'Forbidden' });
+    const role = await userRoleForProject(objectId, req.user.id);
+    if (!role) return res.status(403).json({ error: 'Forbidden' });
     const files = await File.find({ projectId: objectId }).sort({ name: 1 });
     res.json(files);
   } catch (error) {
@@ -80,8 +81,8 @@ exports.getFolderContents = async (req, res) => {
     const { projectId, folderId } = req.params;
     const objectId = new mongoose.Types.ObjectId(projectId);
     if (!req.user || !req.user.id) return res.status(401).json({ error: 'Unauthorized' });
-    const hasAccess = await userHasProjectAccess(objectId, req.user.id);
-    if (!hasAccess) return res.status(403).json({ error: 'Forbidden' });
+    const role = await userRoleForProject(objectId, req.user.id);
+    if (!role) return res.status(403).json({ error: 'Forbidden' });
     const parentId = folderId === 'root' ? null : new mongoose.Types.ObjectId(folderId);
 
     const files = await File.find({
@@ -105,8 +106,8 @@ exports.getFile = async (req, res) => {
     }
 
     if (!req.user || !req.user.id) return res.status(401).json({ error: 'Unauthorized' });
-    const hasAccess = await userHasProjectAccess(file.projectId, req.user.id);
-    if (!hasAccess) return res.status(403).json({ error: 'Forbidden' });
+    const role = await userRoleForProject(file.projectId, req.user.id);
+    if (!role) return res.status(403).json({ error: 'Forbidden' });
 
     res.json(file);
   } catch (error) {
@@ -125,8 +126,9 @@ exports.updateFile = async (req, res) => {
 
     // ensure access before updating
     if (!req.user || !req.user.id) return res.status(401).json({ error: 'Unauthorized' });
-    const hasAccess = await userHasProjectAccess(existing.projectId, req.user.id);
-    if (!hasAccess) return res.status(403).json({ error: 'Forbidden' });
+    const role = await userRoleForProject(existing.projectId, req.user.id);
+    if (!role) return res.status(403).json({ error: 'Forbidden' });
+    if (role === 'viewer') return res.status(403).json({ error: 'Read-only access' });
 
     // create a version snapshot of the previous content
     try {
@@ -166,8 +168,8 @@ exports.getHistory = async (req, res) => {
     if (!req.user || !req.user.id) return res.status(401).json({ error: 'Unauthorized' });
     const file = await File.findById(fileObjId);
     if (!file) return res.status(404).json({ error: 'File not found' });
-    const hasAccess = await userHasProjectAccess(file.projectId, req.user.id);
-    if (!hasAccess) return res.status(403).json({ error: 'Forbidden' });
+    const role = await userRoleForProject(file.projectId, req.user.id);
+    if (!role) return res.status(403).json({ error: 'Forbidden' });
 
     const versions = await Version.find({ fileId: fileObjId }).sort({ createdAt: -1 }).limit(50);
     res.json(versions);
@@ -185,8 +187,9 @@ exports.revertToVersion = async (req, res) => {
     if (!req.user || !req.user.id) return res.status(401).json({ error: 'Unauthorized' });
     const file = await File.findById(fileObjId);
     if (!file) return res.status(404).json({ error: 'File not found' });
-    const hasAccess = await userHasProjectAccess(file.projectId, req.user.id);
-    if (!hasAccess) return res.status(403).json({ error: 'Forbidden' });
+    const role = await userRoleForProject(file.projectId, req.user.id);
+    if (!role) return res.status(403).json({ error: 'Forbidden' });
+    if (role === 'viewer') return res.status(403).json({ error: 'Read-only access' });
 
     const version = await Version.findById(new mongoose.Types.ObjectId(versionId));
     if (!version) return res.status(404).json({ error: 'Version not found' });
@@ -217,8 +220,9 @@ exports.deleteFile = async (req, res) => {
     }
 
     if (!req.user || !req.user.id) return res.status(401).json({ error: 'Unauthorized' });
-    const hasAccess = await userHasProjectAccess(file.projectId, req.user.id);
-    if (!hasAccess) return res.status(403).json({ error: 'Forbidden' });
+    const role = await userRoleForProject(file.projectId, req.user.id);
+    if (!role) return res.status(403).json({ error: 'Forbidden' });
+    if (role === 'viewer') return res.status(403).json({ error: 'Read-only access' });
 
     if (file.type === 'folder') {
       await File.deleteMany({ parentFolderId: new mongoose.Types.ObjectId(fileId) });

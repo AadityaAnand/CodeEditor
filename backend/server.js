@@ -93,8 +93,19 @@ const io = new Server(server, {
   },
 });
 
-// in-memory presence tracking: fileId -> Map(socketId -> { userId, name, cursor })
+// in-memory presence tracking (file-level): fileId -> Map(socketId -> { userId, name, cursor })
 const presenceMap = new Map();
+// in-memory project presence: projectId -> Map(socketId -> { userId, name, role })
+const projectPresence = new Map();
+
+function emitProjectPresence(projectId) {
+  const map = projectPresence.get(String(projectId));
+  const list = [];
+  if (map) {
+    for (const [, info] of map.entries()) list.push(info);
+  }
+  try { io.to(String(projectId)).emit('project:presence', list); } catch (e) { console.warn('emitProjectPresence failed:', e.message); }
+}
 
 function emitPresenceUpdate(fileId) {
   const map = presenceMap.get(fileId);
@@ -117,19 +128,30 @@ io.use((socket, next) => socketAuth(socket, next));
 io.on('connection', (socket) => {
   logger.info({ socketId: socket.id }, '🔌 socket connected');
   socket.on('disconnect', () => {
-  logger.info({ socketId: socket.id }, '🔌 socket disconnected');
-    // remove socket from any presence lists it was part of
+    logger.info({ socketId: socket.id }, '🔌 socket disconnected');
+    // file-level cleanup
     try {
       for (const [fileId, map] of presenceMap.entries()) {
         if (map.has(socket.id)) {
           map.delete(socket.id);
-          // cleanup empty maps
           if (map.size === 0) presenceMap.delete(fileId);
           emitPresenceUpdate(fileId);
         }
       }
     } catch (e) {
       console.warn('disconnect presence cleanup error:', e.message);
+    }
+    // project-level cleanup
+    try {
+      for (const [projId, map] of projectPresence.entries()) {
+        if (map.has(socket.id)) {
+          map.delete(socket.id);
+          if (map.size === 0) projectPresence.delete(projId);
+          emitProjectPresence(projId);
+        }
+      }
+    } catch (e) {
+      console.warn('disconnect project presence cleanup error:', e.message);
     }
   });
 
@@ -145,8 +167,16 @@ io.on('connection', (socket) => {
       const isCollaborator = project.collaborators && project.collaborators.some((c) => String(c.userId) === String(userId));
 
       if (isOwner || isCollaborator) {
-  socket.join(projectId);
-  logger.info({ socketId: socket.id, projectId }, `🔌 socket ${socket.id} joined project ${projectId}`);
+        socket.join(projectId);
+        // track presence with role
+        try {
+          let map = projectPresence.get(String(projectId));
+          if (!map) { map = new Map(); projectPresence.set(String(projectId), map); }
+          const role = isOwner ? 'owner' : (project.collaborators.find(c => String(c.userId) === String(userId))?.role || 'editor');
+          map.set(socket.id, { socketId: socket.id, userId, name: socket.user && (socket.user.name || socket.user.email), role });
+          emitProjectPresence(projectId);
+        } catch (e) { console.warn('project presence set failed', e.message); }
+        logger.info({ socketId: socket.id, projectId }, `🔌 socket ${socket.id} joined project ${projectId}`);
       } else {
   logger.warn({ socketId: socket.id, projectId }, `🔒 socket attempted to join project without access`);
       }
