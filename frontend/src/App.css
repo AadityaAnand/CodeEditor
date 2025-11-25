@@ -2,45 +2,88 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 }
 
 .header {
-  background-color: #0f1724;
+  background: linear-gradient(180deg, #0f1724 0%, #0a0f1a 100%);
   color: #fff;
-  padding: 18px 28px;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  padding: 20px 32px;
+  border-bottom: 1px solid rgba(6,182,212,0.1);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
 .header h1 {
   margin: 0;
-  font-size: 20px;
-  letter-spacing: -0.2px;
-  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: -0.3px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #fff 0%, rgba(6,182,212,0.95) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .header .tagline {
   margin-top: 4px;
   font-size: 13px;
-  color: rgba(255,255,255,0.72);
+  color: rgba(255,255,255,0.75);
+  font-weight: 400;
+}
+
+.header .controls {
+  display: flex;
+  gap: 10px;
 }
 
 .header .controls button {
-  background: #0ea5ff;
-  color: #06202a;
+  background: linear-gradient(135deg, #0ea5ff 0%, #0891b2 100%);
+  color: #0a1929;
   border: none;
-  padding: 8px 12px;
-  border-radius: 6px;
+  padding: 10px 16px;
+  border-radius: 7px;
   cursor: pointer;
   font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(14,165,255,0.3);
+}
+
+.header .controls button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(14,165,255,0.4);
 }
 
 .header .controls .secondary {
   background: transparent;
-  color: rgba(255,255,255,0.9);
-  border: 1px solid rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.92);
+  border: 1px solid rgba(255,255,255,0.15);
+  box-shadow: none;
+}
+
+.header .controls .secondary:hover {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.25);
+}
+
+@media (max-width: 768px) {
+  .header {
+    padding: 16px 20px;
+    flex-wrap: wrap;
+  }
+  .header h1 {
+    font-size: 18px;
+  }
+  .header .tagline {
+    font-size: 12px;
+  }
+  .header .controls button {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
 }
 
 

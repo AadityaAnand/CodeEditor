@@ -11,15 +11,27 @@ const logger = require('./logger');
 const pinoHttp = require('pino-http');
 const Sentry = require('@sentry/node');
 
-// Initialize Sentry if configured (optional)
-if (process.env.SENTRY_DSN) {
-  Sentry.init({ dsn: process.env.SENTRY_DSN });
+// Initialize Sentry if configured (production only recommended)
+if (process.env.SENTRY_DSN && process.env.NODE_ENV === 'production') {
+  Sentry.init({ 
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV || 'development',
+    tracesSampleRate: 0.1, // sample 10% of transactions for performance monitoring
+  });
   // request handler must be first middleware when using Sentry
   app.use(Sentry.Handlers.requestHandler());
+  logger.info('✅ Sentry initialized for production error tracking');
 }
 
-// attach pino-http for request logging
-app.use(pinoHttp({ logger }));
+// Request ID middleware (for tracing)
+const requestIdMiddleware = require('./middleware/requestId');
+app.use(requestIdMiddleware);
+
+// attach pino-http for request logging (will include req.id from requestId middleware)
+app.use(pinoHttp({ 
+  logger,
+  customProps: (req) => ({ requestId: req.id }),
+}));
 const http = require('http');
 const { Server } = require('socket.io');
 
@@ -275,6 +287,20 @@ app.use('/api/share', shareRoutes);
 
 // file routes (under /api/...)
 app.use('/api', fileRoutes);
+
+// Sentry error handler (must be after all controllers and before other error middleware)
+if (process.env.SENTRY_DSN && process.env.NODE_ENV === 'production') {
+  app.use(Sentry.Handlers.errorHandler());
+}
+
+// Generic error handler
+app.use((err, req, res, next) => {
+  logger.error({ err, requestId: req.id }, 'Unhandled error');
+  res.status(err.status || 500).json({ 
+    error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
+    requestId: req.id,
+  });
+});
 
 // Start server only when this file is run directly (prevents tests from trying to listen multiple times)
 // default to 5050 locally to avoid clashes with OS services

@@ -4,11 +4,13 @@
     BACKEND_URL=https://your-backend.onrender.com node scripts/smoke.js
 
   The script will:
+  - check /health endpoint
   - register a new user
   - login
   - create a project
   - create a file
   - fetch file history
+  - optionally test socket.io handshake (if socket.io-client available)
 
   Exit code 0 on success, non-zero on failure.
 */
@@ -24,8 +26,14 @@
 
     const log = (...args) => console.log('[smoke]', ...args);
 
+    // 1. Check health endpoint
+    log('Checking /health endpoint');
+    let res = await fetch(new URL('/health', base));
+    if (res.status !== 200) throw new Error('Health check failed: ' + res.status);
+    log('✓ Health check passed');
+
     log('Registering user', email);
-    let res = await fetch(new URL('/auth/register', base), {
+    res = await fetch(new URL('/auth/register', base), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, name: 'Smoke Tester' }),
