@@ -108,6 +108,7 @@ See [DEPLOY.md](./DEPLOY.md) for full deploy guide. Quick steps:
 - [PROVISIONING.md](./PROVISIONING.md) — MongoDB Atlas setup
 - [SECRETS.md](./SECRETS.md) — Environment secrets reference
 - [DEPLOY.md](./DEPLOY.md) — Deployment guide for Render + Vercel
+- [RUNBOOK.md](./RUNBOOK.md) — One-day deployment checklist
 
 ## 📞 Contact
 
@@ -115,5 +116,3 @@ GitHub: [@AadityaAnand](https://github.com/AadityaAnand) • Repo: [CodeEditor](
 
 ---
 **Built with ❤️ for collaborative coding**
-
-# CodeEditor
