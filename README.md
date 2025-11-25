@@ -77,5 +77,3 @@ Notes
 Next recommended tasks
 - Add a CI workflow to run linting, backend tests, and the frontend build on each push.
 - Add `/health` and `/ready` endpoints and graceful shutdown handling in the backend.
-
-# CodeEditor
