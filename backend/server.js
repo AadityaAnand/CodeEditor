@@ -71,6 +71,12 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
+// Validate MongoDB URI before connecting
+if (!process.env.MONGODB_URI) {
+  logger.error('❌ MONGODB_URI environment variable is not set');
+  process.exit(1);
+}
+
 mongoose.connect(process.env.MONGODB_URI)
 .then(() => logger.info('✅ MongoDB connected'))
 .catch((err) => logger.error({ err }, '❌ MongoDB connection error'));
