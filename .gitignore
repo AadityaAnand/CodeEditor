@@ -17,8 +17,7 @@ logs/
 # Build
 dist/
 build/
-# Lockfiles
-package-lock.json
+# Lockfiles (keep for Docker builds)
 pnpm-lock.yaml
 # Misc
 .idea/
