@@ -1,6 +1,8 @@
-// Load .env only in development (production uses Render env vars)
-if (process.env.NODE_ENV !== 'production') {
-  require('dotenv').config();
+// Load .env file if it exists (local development)
+try {
+  require('dotenv').config({ path: require('path').join(__dirname, '.env') });
+} catch (e) {
+  // .env doesn't exist or dotenv failed - use environment variables directly
 }
 const express = require('express');
 const mongoose = require('mongoose');
