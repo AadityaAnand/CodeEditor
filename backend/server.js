@@ -344,6 +344,10 @@ app.use('/api/share', shareRoutes);
 // file routes (under /api/...)
 app.use('/api', fileRoutes);
 
+// execute routes
+const executeRoutes = require('./routes/executeRoutes');
+app.use('/api/execute', executeRoutes);
+
 // Sentry error handler (must be after all controllers and before other error middleware)
 if (process.env.SENTRY_DSN && process.env.NODE_ENV === 'production') {
   app.use(Sentry.Handlers.errorHandler());

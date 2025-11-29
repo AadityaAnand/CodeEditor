@@ -54,7 +54,10 @@ export default function JoinProjectPage({ apiBase, authToken }) {
     <div className="join-page">
       <div className="join-card">
         <h2>Join a Shared Project</h2>
-        <p>Paste the share link or token you received.</p>
+        <p>Paste the share link or token you received from a project owner.</p>
+        <div style={{ fontSize: 13, color: '#60a5fa', background: '#1e3a8a', padding: 12, borderRadius: 6, marginBottom: 16 }}>
+          📋 <strong>Example:</strong> <code style={{ background: '#1e293b', padding: '2px 6px', borderRadius: 4, fontSize: 12 }}>https://codeeditor-jgf5.onrender.com/share/abc123xyz</code>
+        </div>
         <form onSubmit={handleJoin} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <input
             className="join-input"

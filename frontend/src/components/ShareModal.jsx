@@ -50,7 +50,10 @@ export default function ShareModal({ apiBase, projectId, onClose, currentRole })
     <div className="modal-backdrop" style={{ zIndex: 3000 }}>
       <div className="modal" style={{ maxWidth: 520, width: '100%', background: '#0f1825', color: '#fff', border: '1px solid #1e3a4f' }}>
         <h3 style={{ marginTop: 0 }}>Share Project</h3>
-        <p style={{ fontSize: 13, color: '#94a3b8' }}>Invite by email with a role, or copy a time-limited share link.</p>
+        <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 12 }}>Invite by email with a role, or copy a time-limited share link.</p>
+        <div style={{ fontSize: 12, color: '#60a5fa', background: '#1e3a8a', padding: 10, borderRadius: 6, marginBottom: 16 }}>
+          💡 <strong>Share Link:</strong> Recipients can paste the link at <code style={{ background: '#1e293b', padding: '2px 6px', borderRadius: 4 }}>/join</code> to access the project
+        </div>
         <form onSubmit={invite} style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
           <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="user@example.com" style={{ flex: 2 }} disabled={loading || disabled} />
           <select value={role} onChange={(e) => setRole(e.target.value)} disabled={loading || disabled} style={{ flex: 1 }}>

@@ -12,6 +12,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import JoinProjectPage from './pages/JoinProjectPage';
 import ShareModal from './components/ShareModal';
+import Terminal from './components/Terminal';
 
 function App() {
   const [language, setLanguage] = useState('javascript');
@@ -96,11 +97,23 @@ function App() {
     const socket = getSocket(authToken);
     // expose socket globally for editor components to reuse (backwards compat)
     try { window.__appSocket = socket; window.dispatchEvent(new Event('socket-ready')); } catch (e) {}
-    socket.on('connect', () => {
+    
+    const handleConnect = () => {
       console.log('socket connected', socket.id);
       // join project room for scoped events
-      if (selectedProjectId) socket.emit('join-project', selectedProjectId);
-    });
+      if (selectedProjectId) {
+        console.log('Joining project room:', selectedProjectId);
+        socket.emit('join-project', selectedProjectId);
+      }
+    };
+    
+    socket.on('connect', handleConnect);
+    
+    // If already connected, join immediately
+    if (socket.connected && selectedProjectId) {
+      console.log('Socket already connected, joining project:', selectedProjectId);
+      socket.emit('join-project', selectedProjectId);
+    }
     socket.on('file:created', (file) => {
       console.log('socket file:created', file);
       setFiles((prev) => {
@@ -125,7 +138,11 @@ function App() {
     });
 
     return () => {
-      socket.disconnect();
+      socket.off('connect', handleConnect);
+      socket.off('file:created');
+      socket.off('file:updated');
+      socket.off('file:deleted');
+      // Don't disconnect - let socket persist across component updates
     };
   }, [API, selectedFile, authToken, selectedProjectId]);
 
@@ -449,7 +466,14 @@ function App() {
                   onRenameFile={handleRenameFile}
                   projectId={selectedProjectId}
                 />
-                <CodeEditor language={language} selectedFile={selectedFile} readOnly={currentProjectRole === 'viewer'} />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ flex: 1, minHeight: 0 }}>
+                    <CodeEditor language={language} selectedFile={selectedFile} readOnly={currentProjectRole === 'viewer'} />
+                  </div>
+                  <div style={{ height: '250px', borderTop: '1px solid #333' }}>
+                    <Terminal selectedFile={selectedFile} selectedProjectId={selectedProjectId} />
+                  </div>
+                </div>
               </div>
             </div>
           )} />
