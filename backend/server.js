@@ -40,8 +40,23 @@ app.use(pinoHttp({
 const http = require('http');
 const { Server } = require('socket.io');
 
+// Support multiple origins for development and production
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://code-editor-topaz-nu.vercel.app',
+  process.env.CLIENT_ORIGIN
+].filter(Boolean);
+
 const corsOptions = {
-  origin: process.env.CLIENT_ORIGIN || 'http://localhost:3000',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   // allow common headers used by browsers and fetch requests
@@ -98,7 +113,7 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_ORIGIN || 'http://localhost:3000',
+    origin: allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true,
   },
