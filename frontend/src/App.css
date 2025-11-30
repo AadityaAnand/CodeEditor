@@ -188,7 +188,7 @@
 
 /* Prevent accidental overlay blocking clicks */
 /* Overlay wrapper should not cover editor; limit width and disable pointer events except panel */
-.history-overlay { position:absolute; top:0; right:0; height:100%; width:340px; pointer-events:none; z-index:40; }
+.history-overlay { position:absolute; top:0; right:0; height:100%; width:340px; pointer-events:none; z-index:5; }
 /* History panel layout (dock right instead of covering editor) */
 .history-overlay .history-panel {
   position:relative;

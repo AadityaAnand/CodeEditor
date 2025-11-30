@@ -321,7 +321,7 @@ function CodeEditor({ language, selectedFile, readOnly }) {
           👉 Select a file from the left pane to start editing.
         </div>
       )}
-      <div style={{ flex: 1, height: '100%', position: 'relative' }}>
+      <div style={{ flex: 1, height: '100%', position: 'relative', zIndex: 10 }}>
         {mountError ? (
           <div style={{ padding: 24, color: '#f87171', fontFamily: 'monospace' }}>
             Editor failed to load: {mountError}
