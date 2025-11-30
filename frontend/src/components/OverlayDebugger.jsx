@@ -9,6 +9,9 @@ export default function OverlayDebugger() {
       const style = window.getComputedStyle(el);
       const pos = style.position;
       const zi = parseInt(style.zIndex, 10);
+      const cls = (el.className || '').toString();
+      // ignore Monaco editor itself to prevent confusion
+      if (cls.includes('monaco-editor')) return;
       if ((pos === 'fixed' || pos === 'absolute') && !isNaN(zi) && zi >= MIN_Z) {
         const rect = el.getBoundingClientRect();
         if (rect.width > 0 && rect.height > 0) {

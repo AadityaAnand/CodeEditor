@@ -192,13 +192,9 @@
 .history-overlay { position:absolute; top:0; right:0; height:100%; width:340px; pointer-events:none; z-index:5; }
 .history-overlay { max-width: 380px; }
 
-/* Ensure Monaco always sits above incidental overlays within workspace */
-.monaco-editor,
-.monaco-editor .overflow-guard,
-.monaco-editor .monaco-editor-background,
-.monaco-editor .monaco-scrollable-element {
-  z-index: 2000 !important;
-}
+/* Normalize stacking: children of workspace sit above base, overlays use modest z-index */
+.workspace > * { position: relative; z-index: 1; }
+.history-overlay { z-index: 2; }
 
 /* Context menu should not cover editor outside file tree area */
 .context-menu { z-index: 1000; }
