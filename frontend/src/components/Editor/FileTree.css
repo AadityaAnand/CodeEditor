@@ -1,11 +1,14 @@
 .file-tree {
+  flex: 0 0 250px;
   width: 250px;
   background-color: #252526;
   border-right: 1px solid #3e3e42;
   padding: 15px;
-  max-height: 90vh;
+  max-height: 100%;
   overflow-y: auto;
   color: #cccccc;
+  position: relative;
+  z-index: 1;
 }
 
 .file-tree h3 {
