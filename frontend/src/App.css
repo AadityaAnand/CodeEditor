@@ -177,6 +177,18 @@
 /* Provide dark background so unloaded editor isn't stark white */
 .workspace { background: #1e1e1e; }
 
+/* Force Monaco editor dark background even if theme load delayed */
+.monaco-editor,
+.monaco-editor .monaco-editor-background,
+.monaco-editor .inputarea,
+.monaco-editor .margin,
+.monaco-editor .monaco-scrollable-element { background: #1e1e1e !important; }
+.monaco-editor .view-lines { background: #1e1e1e !important; }
+.monaco-editor, .monaco-editor * { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; }
+
+/* Prevent accidental overlay blocking clicks */
+.history-overlay { pointer-events: auto; }
+
 /* Project selector refined */
 .project-selector { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .project-select-wrap { display: flex; }

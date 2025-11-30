@@ -75,7 +75,12 @@ exports.listCollaborators = async (req, res) => {
     if (!project) return res.status(404).json({ error: 'Project not found' });
     const requesterId = req.user.id;
     const isOwner = String(project.owner) === String(requesterId);
-    const isCollab = project.collaborators.some(c => String(c.userId) === String(requesterId));
+    const isCollab = project.collaborators.some(c => {
+      // after populate userId is a document; before populate it's an ObjectId
+      if (!c.userId) return false;
+      const id = c.userId._id ? c.userId._id : c.userId; // support both forms
+      return String(id) === String(requesterId);
+    });
     if (!isOwner && !isCollab) return res.status(403).json({ error: 'Forbidden' });
     const ownerUser = await require('../models/User').findById(project.owner).select('email name');
     const list = [ { userId: ownerUser._id, email: ownerUser.email, name: ownerUser.name, role: 'owner' }, ...project.collaborators.map(c => ({ userId: c.userId._id, email: c.userId.email, name: c.userId.name, role: c.role })) ];
