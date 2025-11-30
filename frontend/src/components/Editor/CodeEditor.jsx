@@ -274,9 +274,21 @@ function CodeEditor({ language, selectedFile, readOnly }) {
     };
   }, [selectedFile]);
 
+  const editorFailed = useRef(false);
+  const [mountError, setMountError] = useState(null);
+
+  const safeOnMount = (editor, monaco) => {
+    try {
+      handleEditorDidMount(editor, monaco);
+    } catch (e) {
+      editorFailed.current = true;
+      setMountError(e.message || 'Editor failed to initialize');
+    }
+  };
+
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-      {selectedFile && (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#1e1e1e' }}>
+      {selectedFile ? (
         <div style={{
           padding: '10px 20px',
           background: '#2d2d2d',
@@ -304,17 +316,27 @@ function CodeEditor({ language, selectedFile, readOnly }) {
             <button onClick={() => setShowHistory(true)} style={{ padding: '6px 10px' }}>History</button>
           </div>
         </div>
+      ) : (
+        <div style={{ padding: '16px 24px', color: '#cbd5e1', fontSize: 14, borderBottom: '1px solid #2f2f2f' }}>
+          👉 Select a file from the left pane to start editing.
+        </div>
       )}
-      <div style={{ flex: 1, height: '100%' }}>
-        <MonacoEditor
-          height="100%"
-          language={language}
-          value={code}
-          onChange={handleEditorChange}
-          onMount={handleEditorDidMount}
-          theme='vs-dark'
-          options={{ readOnly: !!readOnly }}
-        />
+      <div style={{ flex: 1, height: '100%', position: 'relative' }}>
+        {mountError ? (
+          <div style={{ padding: 24, color: '#f87171', fontFamily: 'monospace' }}>
+            Editor failed to load: {mountError}
+          </div>
+        ) : (
+          <MonacoEditor
+            height="100%"
+            language={language}
+            value={code}
+            onChange={handleEditorChange}
+            onMount={safeOnMount}
+            theme='vs-dark'
+            options={{ readOnly: !!readOnly }}
+          />
+        )}
       </div>
       {showHistory && selectedFile ? (
         <div className="history-overlay">

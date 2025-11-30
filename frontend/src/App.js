@@ -121,6 +121,13 @@ function App() {
         if (prev.some((f) => String(f._id) === String(file._id))) return prev;
         return [...prev.filter((f) => !(f.name === file.name && (f.parentFolderId || null) === (file.parentFolderId || null) && String(f._id).length > 10)), file];
       });
+      // auto-select first file when files load and nothing selected
+      useEffect(() => {
+        if (!selectedFile && files && files.length) {
+          const firstFile = files.find(f => f.type === 'file');
+          if (firstFile) setSelectedFile(firstFile);
+        }
+      }, [files, selectedFile]);
     });
 
     socket.on('file:updated', (file) => {
