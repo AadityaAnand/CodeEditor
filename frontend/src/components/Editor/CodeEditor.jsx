@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from 'react';
 import getSocket from '../../services/socket';
 import apiFetch from '../../services/api';
 import MonacoEditor from '@monaco-editor/react';
+import '../../monacoWorkerFallback';
 import HistoryPanel from './HistoryPanel';
 
 // small debounce helper
