@@ -10,15 +10,16 @@ export default function ShareModal({ apiBase, projectId, onClose, currentRole })
   const [linkLoading, setLinkLoading] = useState(false);
   const disabled = !projectId;
 
-  const load = async () => {
-    if (!projectId) return;
-    try {
-      const res = await apiFetch(`/api/projects/${projectId}/collaborators`);
-      if (!res.ok) return;
-      setCollaborators(await res.json());
-    } catch (e) { /* ignore */ }
-  };
-  useEffect(() => { load(); }, [projectId]);
+  useEffect(() => {
+    (async () => {
+      if (!projectId) return;
+      try {
+        const res = await apiFetch(`/api/projects/${projectId}/collaborators`);
+        if (!res.ok) return;
+        setCollaborators(await res.json());
+      } catch (e) { /* ignore */ }
+    })();
+  }, [projectId]);
 
   const invite = async (e) => {
     e.preventDefault();
@@ -29,7 +30,11 @@ export default function ShareModal({ apiBase, projectId, onClose, currentRole })
       if (!res.ok) throw new Error('Invite failed');
       showToast('Collaborator invited', { type: 'success' });
       setEmail('');
-      load();
+      // refresh collaborators
+      try {
+        const res2 = await apiFetch(`/api/projects/${projectId}/collaborators`);
+        if (res2.ok) setCollaborators(await res2.json());
+      } catch (e) { /* ignore */ }
     } catch (e) { showToast(e.message || 'Invite failed', { type: 'error' }); } finally { setLoading(false); }
   };
 
