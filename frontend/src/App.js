@@ -13,6 +13,7 @@ import RegisterPage from './pages/RegisterPage';
 import JoinProjectPage from './pages/JoinProjectPage';
 import ShareModal from './components/ShareModal';
 import Terminal from './components/Terminal';
+import OverlayDebugger from './components/OverlayDebugger';
 
 function App() {
   const [language, setLanguage] = useState('javascript');
@@ -67,6 +68,7 @@ function App() {
   const [projectPresence, setProjectPresence] = useState([]);
   const [currentProjectRole, setCurrentProjectRole] = useState(null);
   const [showShare, setShowShare] = useState(false);
+  const [debugOverlays, setDebugOverlays] = useState(false);
 
   // auto-select first available file if none selected
   useEffect(() => {
@@ -465,6 +467,7 @@ function App() {
                   </div>
                 </div>
                 <LanguageSelector language={language} onLanguageChange={setLanguage} />
+                <button className="secondary-btn" onClick={() => setDebugOverlays((v) => !v)}>{debugOverlays ? 'Hide Overlay Debug' : 'Show Overlay Debug'}</button>
               </div>
               <div className="workspace">
                 <FileTree
@@ -483,6 +486,7 @@ function App() {
                   </div>
                 </div>
               </div>
+              {debugOverlays && <OverlayDebugger />}
             </div>
           )} />
         </Routes>
