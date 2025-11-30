@@ -176,6 +176,7 @@
 .workspace { flex: 1; display: flex; height: calc(100vh - 160px); position: relative; overflow: hidden; }
 /* Provide dark background so unloaded editor isn't stark white */
 .workspace { background: #1e1e1e; pointer-events: auto; z-index: auto; }
+.workspace { position: relative; }
 
 /* Force Monaco editor dark background even if theme load delayed */
 .monaco-editor,
@@ -189,6 +190,22 @@
 /* Prevent accidental overlay blocking clicks */
 /* Overlay wrapper should not cover editor; limit width and disable pointer events except panel */
 .history-overlay { position:absolute; top:0; right:0; height:100%; width:340px; pointer-events:none; z-index:5; }
+.history-overlay { max-width: 380px; }
+
+/* Ensure Monaco always sits above incidental overlays within workspace */
+.monaco-editor,
+.monaco-editor .overflow-guard,
+.monaco-editor .monaco-editor-background,
+.monaco-editor .monaco-scrollable-element {
+  z-index: 2000 !important;
+}
+
+/* Context menu should not cover editor outside file tree area */
+.context-menu { z-index: 1000; }
+
+/* Backdrop and toasts: keep interactive but avoid masking editor when mis-triggered */
+.modal-backdrop { z-index: 1200; pointer-events: none; }
+.toast-container { z-index: 1400; pointer-events: none; }
 /* History panel layout (dock right instead of covering editor) */
 .history-overlay .history-panel {
   position:relative;

@@ -3,8 +3,16 @@ import apiFetch from '../../services/api';
 
 function ConfirmModal({ title, message, onConfirm, onCancel, busy }) {
   return (
-    <div className="modal-backdrop">
-      <div className="modal" role="dialog" aria-modal="true">
+    <div style={{
+      position: 'absolute',
+      inset: 0,
+      background: 'rgba(0,0,0,0.35)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 20
+    }}>
+      <div className="modal" role="dialog" aria-modal="true" style={{ zIndex: 21 }}>
         <h4>{title}</h4>
         <div style={{ marginTop: 8 }}>{message}</div>
         <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -65,7 +73,7 @@ export default function HistoryPanel({ fileId, onClose, onRevert }) {
   };
 
   return (
-    <div className="history-panel" role="dialog" aria-label="File history" aria-modal="false">
+    <div className="history-panel" role="dialog" aria-label="File history" aria-modal="false" style={{ position: 'relative' }}>
       <div className="history-header">
         <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>File History</h3>
         <div style={{ display: 'flex', gap: 8 }}>
