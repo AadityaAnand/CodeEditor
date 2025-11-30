@@ -65,10 +65,13 @@ export default function HistoryPanel({ fileId, onClose, onRevert }) {
   };
 
   return (
-    <div className="history-panel">
+    <div className="history-panel" role="dialog" aria-label="File history" aria-modal="false">
       <div className="history-header">
-        <h3>File History</h3>
-        <button onClick={onClose}>Close</button>
+        <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>File History</h3>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => setVersions([])} title="Refresh" style={{ fontSize: 12 }}>↻</button>
+          <button onClick={onClose} style={{ fontSize: 12 }}>✕</button>
+        </div>
       </div>
       {loading ? <div>Loading...</div> : null}
       {error ? <div style={{ color: 'red' }}>{error}</div> : null}
