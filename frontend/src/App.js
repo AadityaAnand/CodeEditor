@@ -65,10 +65,10 @@ function App() {
   ]);
 
   // collaboration / sharing state
-  const [projectPresence, setProjectPresence] = useState([]);
   const [currentProjectRole, setCurrentProjectRole] = useState(null);
   const [showShare, setShowShare] = useState(false);
   const [debugOverlays, setDebugOverlays] = useState(false);
+  // projectPresence removed - was unused
 
   // auto-select first available file if none selected
   useEffect(() => {
@@ -93,14 +93,7 @@ function App() {
     })();
   }, [selectedProjectId, authToken, authUser]);
 
-  // listen for project presence broadcasts
-  useEffect(() => {
-    const socket = getSocket(authToken);
-    if (!socket) return;
-    const handler = (list) => setProjectPresence(list || []);
-    socket.on('project:presence', handler);
-    return () => { socket.off('project:presence', handler); };
-  }, [authToken]);
+  // project presence listener removed (was unused)
 
   // socket.io: connect and listen for file events to keep UI in sync
   useEffect(() => {
@@ -477,7 +470,7 @@ function App() {
                   onRenameFile={handleRenameFile}
                   projectId={selectedProjectId}
                 />
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, position: 'relative' }}>
                   <div style={{ flex: 1, minHeight: 0 }}>
                     <CodeEditor language={language} selectedFile={selectedFile} readOnly={currentProjectRole === 'viewer'} />
                   </div>
