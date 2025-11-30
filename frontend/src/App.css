@@ -187,21 +187,21 @@
 .monaco-editor, .monaco-editor * { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; }
 
 /* Prevent accidental overlay blocking clicks */
-.history-overlay { pointer-events: auto; }
+/* Overlay wrapper should not cover editor; limit width and disable pointer events except panel */
+.history-overlay { position:absolute; top:0; right:0; height:100%; width:340px; pointer-events:none; z-index:40; }
 /* History panel layout (dock right instead of covering editor) */
 .history-overlay .history-panel {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 340px;
-  height: 100%;
-  background: #0f1825;
-  border-left: 1px solid #1e293b;
-  display: flex;
-  flex-direction: column;
-  box-shadow: -2px 0 12px -4px rgba(0,0,0,0.4);
-  color: #e2e8f0;
-  font-size: 13px;
+  position:relative;
+  width:100%;
+  height:100%;
+  background:#0f1825;
+  border-left:1px solid #1e293b;
+  display:flex;
+  flex-direction:column;
+  box-shadow:-2px 0 12px -4px rgba(0,0,0,0.4);
+  color:#e2e8f0;
+  font-size:13px;
+  pointer-events:auto;
 }
 .history-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid #1e293b; background: #132637; }
 .history-list { flex: 1; overflow-y: auto; padding: 8px 12px; display: flex; flex-direction: column; gap: 12px; }
