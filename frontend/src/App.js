@@ -470,11 +470,11 @@ function App() {
                   onRenameFile={handleRenameFile}
                   projectId={selectedProjectId}
                 />
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, position: 'relative' }}>
-                  <div style={{ flex: 1, minHeight: 0 }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, position: 'relative', pointerEvents: 'none' }}>
+                  <div style={{ flex: 1, minHeight: 0, pointerEvents: 'auto' }}>
                     <CodeEditor language={language} selectedFile={selectedFile} readOnly={currentProjectRole === 'viewer'} />
                   </div>
-                  <div style={{ height: '250px', borderTop: '1px solid #333' }}>
+                  <div style={{ height: '250px', borderTop: '1px solid #333', pointerEvents: 'auto' }}>
                     <Terminal selectedFile={selectedFile} selectedProjectId={selectedProjectId} />
                   </div>
                 </div>
