@@ -204,7 +204,7 @@
 .context-menu { z-index: 1000; }
 
 /* Backdrop and toasts: keep interactive but avoid masking editor when mis-triggered */
-.modal-backdrop { z-index: 1200; pointer-events: none; }
+.modal-backdrop { display: none; }
 .toast-container { z-index: 1400; pointer-events: none; }
 /* History panel layout (dock right instead of covering editor) */
 .history-overlay .history-panel {

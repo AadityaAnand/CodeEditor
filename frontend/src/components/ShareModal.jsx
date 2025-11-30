@@ -52,8 +52,8 @@ export default function ShareModal({ apiBase, projectId, onClose, currentRole })
   };
 
   return (
-    <div className="modal-backdrop" style={{ position: 'absolute', inset: 0, zIndex: 3000, pointerEvents: 'none' }}>
-      <div className="modal" style={{ maxWidth: 520, width: '100%', background: '#0f1825', color: '#fff', border: '1px solid #1e3a4f', pointerEvents: 'auto' }}>
+    <div style={{ position: 'fixed', top: '10%', left: '50%', transform: 'translateX(-50%)', zIndex: 3000 }}>
+      <div className="modal" style={{ maxWidth: 520, width: '100%', background: '#0f1825', color: '#fff', border: '1px solid #1e3a4f' }}>
         <h3 style={{ marginTop: 0 }}>Share Project</h3>
         <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 12 }}>Invite by email with a role, or copy a time-limited share link.</p>
         <div style={{ fontSize: 12, color: '#60a5fa', background: '#1e3a8a', padding: 10, borderRadius: 6, marginBottom: 16 }}>
