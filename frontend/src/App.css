@@ -173,10 +173,18 @@
 .project-actions { display: flex; gap: 10px; align-items: center; }
 .secondary-btn { background: #1e293b; color: #e2e8f0; border: 1px solid #334d64; padding: 10px 16px; border-radius: 10px; font-size: 13px; cursor: pointer; font-weight: 500; transition: background .16s ease, border-color .16s ease; }
 .secondary-btn:hover { background: #263a50; border-color: #3d5f7a; }
-.workspace { flex: 1; display: flex; min-height: 0; position: relative; overflow: hidden; }
-/* Provide dark background so unloaded editor isn't stark white */
-.workspace { background: #1e1e1e; pointer-events: auto; z-index: auto; }
-.workspace { position: relative; }
+.workspace { 
+  flex: 1; 
+  display: grid; 
+  grid-template-columns: 250px 1fr; 
+  grid-template-rows: 1fr 250px; 
+  min-height: 0; 
+  position: relative; 
+  overflow: hidden; 
+  background: #1e1e1e;
+}
+.workspace > .file-tree { grid-row: 1 / 3; }
+.workspace > * { pointer-events: auto; }
 
 /* Force Monaco editor dark background even if theme load delayed */
 .monaco-editor,

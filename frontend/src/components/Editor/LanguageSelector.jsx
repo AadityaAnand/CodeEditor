@@ -17,11 +17,14 @@ function LanguageSelector({ language, onLanguageChange }) {
                     cursor: 'pointer'
                 }}
             >
-                    <option value="javascript">JavaScript</option>
                     <option value="python">Python</option>
+                    <option value="javascript">JavaScript</option>
+                    <option value="typescript">TypeScript</option>
+                    <option value="java">Java</option>
+                    <option value="cpp">C++</option>
+                    <option value="c">C</option>
                     <option value="html">HTML</option>
                     <option value="css">CSS</option>
-                    <option value="typescript">TypeScript</option>
 
             </select>
             

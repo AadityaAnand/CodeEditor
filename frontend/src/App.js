@@ -13,10 +13,9 @@ import RegisterPage from './pages/RegisterPage';
 import JoinProjectPage from './pages/JoinProjectPage';
 import ShareModal from './components/ShareModal';
 import Terminal from './components/Terminal';
-import OverlayDebugger from './components/OverlayDebugger';
 
 function App() {
-  const [language, setLanguage] = useState('javascript');
+  const [language, setLanguage] = useState('python');
   const [selectedFile, setSelectedFile] = useState(null);
   const API = process.env.REACT_APP_API_URL || 'http://localhost:5050';
   const [projects, setProjects] = useState([]);
@@ -67,7 +66,6 @@ function App() {
   // collaboration / sharing state
   const [currentProjectRole, setCurrentProjectRole] = useState(null);
   const [showShare, setShowShare] = useState(false);
-  const [debugOverlays, setDebugOverlays] = useState(false);
   // projectPresence removed - was unused
 
   // auto-select first available file if none selected
@@ -460,7 +458,6 @@ function App() {
                   </div>
                 </div>
                 <LanguageSelector language={language} onLanguageChange={setLanguage} />
-                <button className="secondary-btn" onClick={() => setDebugOverlays((v) => !v)}>{debugOverlays ? 'Hide Overlay Debug' : 'Show Overlay Debug'}</button>
               </div>
               <div className="workspace">
                 <FileTree
@@ -470,16 +467,9 @@ function App() {
                   onRenameFile={handleRenameFile}
                   projectId={selectedProjectId}
                 />
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, position: 'relative', pointerEvents: 'none' }}>
-                  <div style={{ flex: 1, minHeight: 0, pointerEvents: 'auto' }}>
-                    <CodeEditor language={language} selectedFile={selectedFile} readOnly={currentProjectRole === 'viewer'} />
-                  </div>
-                  <div style={{ height: '250px', borderTop: '1px solid #333', pointerEvents: 'auto' }}>
-                    <Terminal selectedFile={selectedFile} selectedProjectId={selectedProjectId} />
-                  </div>
-                </div>
+                <CodeEditor language={language} selectedFile={selectedFile} readOnly={currentProjectRole === 'viewer'} />
+                <Terminal selectedFile={selectedFile} selectedProjectId={selectedProjectId} />
               </div>
-              {debugOverlays && <OverlayDebugger />}
             </div>
           )} />
         </Routes>
