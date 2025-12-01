@@ -23,12 +23,30 @@ export default function Terminal({ selectedFile, selectedProjectId }) {
     setOutput(prev => prev + `\n$ Running ${selectedFile.name}...\n`);
 
     try {
+      // Prefer language inferred from file extension if it contradicts metadata
+      const inferLanguageFromName = (name) => {
+        if (!name || typeof name !== 'string') return null;
+        const lower = name.toLowerCase();
+        if (lower.endsWith('.py')) return 'python';
+        if (lower.endsWith('.js')) return 'javascript';
+        if (lower.endsWith('.ts')) return 'typescript';
+        if (lower.endsWith('.java')) return 'java';
+        if (lower.endsWith('.c')) return 'c';
+        if (lower.endsWith('.cpp') || lower.endsWith('.cc') || lower.endsWith('.cxx')) return 'cpp';
+        if (lower.endsWith('.html')) return 'html';
+        if (lower.endsWith('.css')) return 'css';
+        return null;
+      };
+
+      const extLang = inferLanguageFromName(selectedFile.name);
+      const languageToRun = extLang || selectedFile.language || 'python';
+
       const res = await apiFetch('/api/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fileId: selectedFile._id,
-          language: selectedFile.language,
+          language: languageToRun,
           code: selectedFile.content
         })
       });
