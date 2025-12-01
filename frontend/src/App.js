@@ -36,7 +36,7 @@ function App() {
       name: 'App.js',
       type: 'file',
       parentFolderId: null,
-      language: 'javascript',
+      language: 'python',
       content: "console.log('Hello from App.js');",
     },
     {
@@ -50,7 +50,7 @@ function App() {
       name: 'index.js',
       type: 'file',
       parentFolderId: '2',
-      language: 'javascript',
+      language: 'python',
       content: "// Index file\nconsole.log('Index');",
     },
     {
@@ -302,7 +302,7 @@ function App() {
       name: fileName,
       type: 'file',
       parentFolderId: null,
-      language: 'javascript',
+      language: 'python',
       content: '',
     };
     // optimistically update UI
@@ -457,7 +457,14 @@ function App() {
                     <button onClick={handleCreateFolder} className="secondary-btn" disabled={currentProjectRole === 'viewer'}>+ Folder</button>
                   </div>
                 </div>
-                <LanguageSelector language={language} onLanguageChange={setLanguage} />
+                <LanguageSelector language={language} onLanguageChange={(lang) => {
+                  setLanguage(lang);
+                  // propagate to selected file so Terminal uses correct runner
+                  if (selectedFile) {
+                    setSelectedFile(prev => prev ? { ...prev, language: lang } : prev);
+                    setFiles(prev => prev.map(f => String(f._id) === String(selectedFile._id) ? { ...f, language: lang } : f));
+                  }
+                }} />
               </div>
               <div className="workspace">
                 <FileTree
@@ -467,8 +474,12 @@ function App() {
                   onRenameFile={handleRenameFile}
                   projectId={selectedProjectId}
                 />
-                <CodeEditor language={language} selectedFile={selectedFile} readOnly={currentProjectRole === 'viewer'} />
-                <Terminal selectedFile={selectedFile} selectedProjectId={selectedProjectId} />
+                <div className="editor-pane">
+                  <CodeEditor language={language} selectedFile={selectedFile} readOnly={currentProjectRole === 'viewer'} />
+                </div>
+                <div className="terminal-pane">
+                  <Terminal selectedFile={selectedFile} selectedProjectId={selectedProjectId} />
+                </div>
               </div>
             </div>
           )} />
