@@ -41,13 +41,20 @@ export default function Terminal({ selectedFile, selectedProjectId }) {
       const extLang = inferLanguageFromName(selectedFile.name);
       const languageToRun = extLang || selectedFile.language || 'python';
 
+      // Prefer latest code from editor's local cache (updated on every change)
+      let codeToRun = selectedFile.content;
+      try {
+        const cached = localStorage.getItem('editorCode');
+        if (cached && typeof cached === 'string') codeToRun = cached;
+      } catch (_) {}
+
       const res = await apiFetch('/api/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fileId: selectedFile._id,
           language: languageToRun,
-          code: selectedFile.content
+          code: codeToRun
         })
       });
 
