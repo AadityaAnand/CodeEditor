@@ -29,6 +29,14 @@ async function executeCode(req, res) {
     try {
       // helper to resolve a Python 3 interpreter on host
       async function resolvePython3() {
+        // If user provided an explicit command, validate it first
+        const envCmd = process.env.PYTHON_CMD && String(process.env.PYTHON_CMD).trim();
+        if (envCmd) {
+          try {
+            const { stdout } = await execAsync(`${envCmd} --version`);
+            if (/Python\s+3\./i.test(stdout)) return envCmd;
+          } catch (_) {}
+        }
         // Try python3 first
         try {
           await execAsync('python3 --version');
