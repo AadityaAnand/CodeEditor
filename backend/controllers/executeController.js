@@ -27,6 +27,26 @@ async function executeCode(req, res) {
     let command;
 
     try {
+      // helper to resolve a Python 3 interpreter on host
+      async function resolvePython3() {
+        // Try python3 first
+        try {
+          await execAsync('python3 --version');
+          return 'python3';
+        } catch (_) {}
+        // Then try plain python and ensure it's Python 3
+        try {
+          const { stdout } = await execAsync('python --version');
+          if (/Python\s+3\./i.test(stdout)) return 'python';
+        } catch (_) {}
+        // Windows launcher (rare on Linux/macOS but harmless to check)
+        try {
+          const { stdout } = await execAsync('py -3 --version');
+          if (/Python\s+3\./i.test(stdout)) return 'py -3';
+        } catch (_) {}
+        return null;
+      }
+
       switch (language) {
         case 'javascript':
           tempFile = path.join(tempDir, 'temp.js');
@@ -37,7 +57,15 @@ async function executeCode(req, res) {
         case 'python':
           tempFile = path.join(tempDir, 'temp.py');
           await fs.writeFile(tempFile, code);
-          command = `python3 "${tempFile}"`;
+          {
+            const pyCmd = await resolvePython3();
+            if (!pyCmd) {
+              return res.status(400).json({
+                error: 'Python 3 interpreter not found. Please install Python 3 (python3) or ensure it is available on PATH.'
+              });
+            }
+            command = `${pyCmd} "${tempFile}"`;
+          }
           break;
         
         case 'typescript':
