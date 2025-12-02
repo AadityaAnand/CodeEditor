@@ -176,9 +176,21 @@ function App() {
         // load user's projects
         const pRes = await apiFetch('/api/projects');
         if (pRes.ok) {
-          const list = await pRes.json();
+          let list = await pRes.json();
+          // if no projects exist, auto-create a default one for a smoother first run
+          if (!list || !list.length) {
+            const created = await apiFetch('/api/projects', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name: 'My First Project' }),
+            });
+            if (created.ok) {
+              const proj = await created.json();
+              list = [proj];
+            }
+          }
           setProjects(list || []);
-          if (!selectedProjectId && list && list.length) {
+          if ((!selectedProjectId || !list.some(p => String(p._id) === String(selectedProjectId))) && list && list.length) {
             setSelectedProjectId(String(list[0]._id));
             try { localStorage.setItem('selectedProjectId', String(list[0]._id)); } catch (e) {}
           }
@@ -297,6 +309,16 @@ function App() {
     const fileName = prompt('Enter file name (e.g., test.js):');
     if (!fileName) return;
 
+    // ensure we have a project to save into
+    if (!selectedProjectId) {
+      try {
+        await handleCreateProject({ name: 'My First Project' });
+      } catch (e) {
+        showToast('Please create/select a project first', { type: 'error' });
+        return;
+      }
+    }
+
     const newFile = {
       _id: Date.now().toString(),
       name: fileName,
@@ -309,13 +331,16 @@ function App() {
     setFiles((prev) => [...prev, newFile]);
 
     try {
-  const response = await apiFetch(`/api/projects/${selectedProjectId}/files`, {
+      const response = await apiFetch(`/api/projects/${selectedProjectId}/files`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newFile),
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          showToast('You are not authenticated. Please login.', { type: 'error' });
+        }
         throw new Error('Failed to create file');
       }
 
