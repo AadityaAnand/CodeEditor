@@ -33,11 +33,11 @@ function App() {
   const [files, setFiles] = useState([
     {
       _id: '1',
-      name: 'App.js',
+      name: 'main.py',
       type: 'file',
       parentFolderId: null,
       language: 'python',
-      content: "console.log('Hello from App.js');",
+      content: "print('Hello from main.py')",
     },
     {
       _id: '2',
@@ -47,11 +47,11 @@ function App() {
     },
     {
       _id: '3',
-      name: 'index.js',
+      name: 'index.py',
       type: 'file',
       parentFolderId: '2',
       language: 'python',
-      content: "// Index file\nconsole.log('Index');",
+      content: "# Index file\nprint('Index')",
     },
     {
       _id: '4',
@@ -285,7 +285,7 @@ function App() {
 
   const handleSelectFile = (file) => {
     setSelectedFile(file);
-    setLanguage(file.language || 'javascript');
+    setLanguage(file.language || 'python');
   };
 
   // auth handlers
@@ -457,7 +457,7 @@ function App() {
         <header className="header">
           <div>
             <h1>CodeEditor</h1>
-            <div className="tagline">Realtime collaborative editor — presence, history, sharing & history</div>
+            {/* tagline removed as requested */}
           </div>
           <nav className="nav-links">
             <Link to="/" className="nav-link">Workspace</Link>

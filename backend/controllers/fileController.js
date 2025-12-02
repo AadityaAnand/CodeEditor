@@ -171,7 +171,11 @@ exports.getHistory = async (req, res) => {
     const role = await userRoleForProject(file.projectId, req.user.id);
     if (!role) return res.status(403).json({ error: 'Forbidden' });
 
-    const versions = await Version.find({ fileId: fileObjId }).sort({ createdAt: -1 }).limit(50);
+    // populate user details for each version so UI can show who made the edit
+    const versions = await Version.find({ fileId: fileObjId })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .populate('userId', 'name email');
     res.json(versions);
   } catch (e) {
     res.status(500).json({ error: e.message });
