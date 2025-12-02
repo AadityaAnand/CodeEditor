@@ -82,7 +82,15 @@ function App() {
       if (!authToken || !selectedProjectId) { setCurrentProjectRole(null); return; }
       try {
         const res = await apiFetch(`/api/projects/${selectedProjectId}/collaborators`);
-        if (!res.ok) return;
+        if (!res.ok) {
+          // if forbidden, clear selection so user can pick a project they have access to
+          if (res.status === 403) {
+            setSelectedProjectId(null);
+            try { localStorage.removeItem('selectedProjectId'); } catch (e) {}
+            showToast('You do not have access to this project. Please select or create a project.', { type: 'error' });
+          }
+          return;
+        }
         const list = await res.json();
         const userId = authUser && (authUser._id || authUser.id);
         const mine = list.find(c => String(c.userId) === String(userId));
@@ -152,7 +160,15 @@ function App() {
       try {
         if (!selectedProjectId) return;
         const res = await apiFetch(`/api/projects/${selectedProjectId}/tree`);
-        if (!res.ok) throw new Error('Failed to load project files');
+        if (!res.ok) {
+          if (res.status === 403) {
+            setSelectedProjectId(null);
+            try { localStorage.removeItem('selectedProjectId'); } catch (e) {}
+            showToast('Access denied to selected project. Please choose another or create one.', { type: 'error' });
+            return;
+          }
+          throw new Error('Failed to load project files');
+        }
         const data = await res.json();
         setFiles(data);
       } catch (e) {
