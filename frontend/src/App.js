@@ -110,7 +110,7 @@ function App() {
     const handleConnect = () => {
       console.log('socket connected', socket.id);
       // join project room for scoped events
-      if (selectedProjectId) {
+      if (authToken && selectedProjectId) {
         console.log('Joining project room:', selectedProjectId);
         socket.emit('join-project', selectedProjectId);
       }
@@ -118,8 +118,8 @@ function App() {
     
     socket.on('connect', handleConnect);
     
-    // If already connected, join immediately
-    if (socket.connected && selectedProjectId) {
+    // If already connected, join immediately (only when authenticated)
+    if (socket.connected && authToken && selectedProjectId) {
       console.log('Socket already connected, joining project:', selectedProjectId);
       socket.emit('join-project', selectedProjectId);
     }
@@ -317,6 +317,12 @@ function App() {
     setAuthToken(null);
     setAuthUser(null);
     try { localStorage.removeItem('token'); localStorage.removeItem('user'); } catch (e) {}
+    // Clear project selection to avoid 403 messages on next load
+    setSelectedProjectId(null);
+    try { localStorage.removeItem('selectedProjectId'); } catch (e) {}
+    // Reset UI state
+    setFiles([]);
+    setSelectedFile(null);
     // reload to reset socket connection and state
     window.location.reload();
   };
