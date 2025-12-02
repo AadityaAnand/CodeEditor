@@ -194,12 +194,13 @@
 .monaco-editor .inputarea,
 .monaco-editor .margin,
 .monaco-editor .monaco-scrollable-element { background: #1e1e1e !important; }
+.monaco-editor { z-index: 1 !important; }
 .monaco-editor .view-lines { background: #1e1e1e !important; }
 .monaco-editor, .monaco-editor * { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; }
 
 /* Prevent accidental overlay blocking clicks */
 /* Overlay wrapper should not cover editor; limit width and disable pointer events except panel */
-.history-overlay { position:absolute; top:0; right:0; height:100%; width:380px; pointer-events:auto; z-index:1100; }
+.history-overlay { position:fixed; top:var(--history-top, 140px); right:0; height:calc(100% - var(--history-top, 140px)); width:380px; pointer-events:auto; z-index:10000; }
 
 /* Normalize stacking: children of workspace sit above base, overlays use modest z-index */
 .workspace > * { position: relative; z-index: 1; }
