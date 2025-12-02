@@ -48,6 +48,24 @@ export default function Terminal({ selectedFile, selectedProjectId }) {
         if (cached && typeof cached === 'string') codeToRun = cached;
       } catch (_) {}
 
+      // Persist latest code to backend before executing so history/save is consistent
+      try {
+        if (selectedFile._id) {
+          const saveRes = await apiFetch(`/api/files/${selectedFile._id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: codeToRun, language: languageToRun }),
+          });
+          // Non-blocking on failures; we still proceed to execute
+          if (!saveRes.ok) {
+            const t = await saveRes.text();
+            setOutput(prev => prev + `Warning: Save failed before run: ${t}\n`);
+          }
+        }
+      } catch (e) {
+        setOutput(prev => prev + `Warning: Save error before run: ${e.message}\n`);
+      }
+
       const res = await apiFetch('/api/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
