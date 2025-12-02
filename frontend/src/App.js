@@ -323,8 +323,8 @@ function App() {
     // Reset UI state
     setFiles([]);
     setSelectedFile(null);
-    // reload to reset socket connection and state
-    window.location.reload();
+    // redirect to login instead of reloading to show login UI
+    window.location.href = '/login';
   };
 
   const handleCreateFile = async () => {
