@@ -177,10 +177,8 @@
   flex: 1;
   display: grid;
   grid-template-columns: 250px 1fr;
-  grid-template-rows: 1fr 250px;
-  grid-template-areas:
-    "sidebar editor"
-    "sidebar terminal";
+  grid-template-rows: 1fr;
+  grid-template-areas: "sidebar editor";
   min-height: 0;
   position: relative;
   overflow: hidden;
@@ -188,7 +186,7 @@
 }
 .workspace > .file-tree { grid-area: sidebar; min-height: 0; }
 .workspace > .editor-pane { grid-area: editor; min-height: 0; display: flex; }
-.workspace > .terminal-pane { grid-area: terminal; min-height: 0; display: flex; }
+.workspace > .terminal-pane { display: none; }
 
 /* Force Monaco editor dark background even if theme load delayed */
 .monaco-editor,
@@ -201,12 +199,11 @@
 
 /* Prevent accidental overlay blocking clicks */
 /* Overlay wrapper should not cover editor; limit width and disable pointer events except panel */
-.history-overlay { position:absolute; top:0; right:0; height:100%; width:340px; pointer-events:none; z-index:5; }
-.history-overlay { max-width: 380px; }
+.history-overlay { position:absolute; top:0; right:0; height:100%; width:380px; pointer-events:auto; z-index:1100; }
 
 /* Normalize stacking: children of workspace sit above base, overlays use modest z-index */
 .workspace > * { position: relative; z-index: 1; }
-.history-overlay { z-index: 2; }
+.history-overlay { z-index: 1100; }
 
 /* Context menu should not cover editor outside file tree area */
 .context-menu { z-index: 1000; }
