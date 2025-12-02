@@ -12,7 +12,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import JoinProjectPage from './pages/JoinProjectPage';
 import ShareModal from './components/ShareModal';
-import Terminal from './components/Terminal';
+// Terminal removed for editor-only mode
 
 function App() {
   const [language, setLanguage] = useState('python');
@@ -502,9 +502,7 @@ function App() {
                 <div className="editor-pane">
                   <CodeEditor language={language} selectedFile={selectedFile} readOnly={currentProjectRole === 'viewer'} />
                 </div>
-                <div className="terminal-pane">
-                  <Terminal selectedFile={selectedFile} selectedProjectId={selectedProjectId} />
-                </div>
+                {/* terminal pane removed */}
               </div>
             </div>
           )} />

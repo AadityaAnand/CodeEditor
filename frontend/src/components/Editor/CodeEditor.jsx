@@ -60,10 +60,33 @@ function CodeEditor({ language, selectedFile, readOnly }) {
     }, 300);
   }, []);
 
+  // Debounced save to backend on content change
+  const saveDebouncedRef = useRef(null);
+  useEffect(() => {
+    saveDebouncedRef.current = debounce(async (fileId, content, lang) => {
+      try {
+        if (!fileId) return;
+        const res = await apiFetch(`/api/files/${fileId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content, language: lang }),
+        });
+        if (!res.ok) {
+          console.warn('save failed:', await res.text());
+        }
+      } catch (e) {
+        console.warn('save error:', e.message);
+      }
+    }, 500);
+  }, []);
+
   const handleEditorChange = (value) => {
     setCode(value);
     if (selectedFile && emitEdit.current) {
       emitEdit.current(selectedFile._id, value);
+    }
+    if (selectedFile && saveDebouncedRef.current) {
+      saveDebouncedRef.current(selectedFile._id, value, language);
     }
   };
 
@@ -299,7 +322,7 @@ function CodeEditor({ language, selectedFile, readOnly }) {
           alignItems: 'center',
           justifyContent: 'space-between'
         }}>
-          <div>📄 {selectedFile.name}</div>
+          <div>📄 {selectedFile.name} <span style={{ opacity: 0.7, marginLeft: 8, fontSize: 12 }}>({language})</span></div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {presenceUsers && presenceUsers.length > 0 ? (
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
