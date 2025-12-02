@@ -7,6 +7,30 @@ const os = require('os');
 
 const execAsync = promisify(exec);
 
+// Resolve a Python 3 interpreter on the host
+async function resolvePython3() {
+  const envCmd = process.env.PYTHON_CMD && String(process.env.PYTHON_CMD).trim();
+  if (envCmd) {
+    try {
+      const { stdout } = await execAsync(`${envCmd} --version`);
+      if (/Python\s+3\./i.test(stdout)) return envCmd;
+    } catch (_) {}
+  }
+  try {
+    await execAsync('python3 --version');
+    return 'python3';
+  } catch (_) {}
+  try {
+    const { stdout } = await execAsync('python --version');
+    if (/Python\s+3\./i.test(stdout)) return 'python';
+  } catch (_) {}
+  try {
+    const { stdout } = await execAsync('py -3 --version');
+    if (/Python\s+3\./i.test(stdout)) return 'py -3';
+  } catch (_) {}
+  return null;
+}
+
 async function executeCode(req, res) {
   try {
     const { fileId, language, code } = req.body;
@@ -27,33 +51,7 @@ async function executeCode(req, res) {
     let command;
 
     try {
-      // helper to resolve a Python 3 interpreter on host
-      async function resolvePython3() {
-        // If user provided an explicit command, validate it first
-        const envCmd = process.env.PYTHON_CMD && String(process.env.PYTHON_CMD).trim();
-        if (envCmd) {
-          try {
-            const { stdout } = await execAsync(`${envCmd} --version`);
-            if (/Python\s+3\./i.test(stdout)) return envCmd;
-          } catch (_) {}
-        }
-        // Try python3 first
-        try {
-          await execAsync('python3 --version');
-          return 'python3';
-        } catch (_) {}
-        // Then try plain python and ensure it's Python 3
-        try {
-          const { stdout } = await execAsync('python --version');
-          if (/Python\s+3\./i.test(stdout)) return 'python';
-        } catch (_) {}
-        // Windows launcher (rare on Linux/macOS but harmless to check)
-        try {
-          const { stdout } = await execAsync('py -3 --version');
-          if (/Python\s+3\./i.test(stdout)) return 'py -3';
-        } catch (_) {}
-        return null;
-      }
+      // use the top-level resolver
 
       switch (language) {
         case 'javascript':
@@ -124,4 +122,16 @@ async function executeCode(req, res) {
   }
 }
 
-module.exports = { executeCode };
+// Health endpoint to verify Python availability in production
+async function pythonHealth(req, res) {
+  try {
+    const cmd = await resolvePython3();
+    if (!cmd) return res.status(400).json({ ok: false, error: 'Python 3 not found', PYTHON_CMD: process.env.PYTHON_CMD || null });
+    const { stdout } = await execAsync(`${cmd} --version`);
+    return res.json({ ok: true, cmd, version: stdout.trim() });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+}
+
+module.exports = { executeCode, pythonHealth, resolvePython3 };
