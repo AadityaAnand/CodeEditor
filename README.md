@@ -121,7 +121,3 @@ docker-compose up --build
 2. Create a user with read/write permissions
 3. Whitelist your IP (or use 0.0.0.0/0 for any)
 4. Copy the connection string and add to Render env vars
-
-## 📄 License
-
-MIT
